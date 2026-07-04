@@ -25,8 +25,11 @@ app/
   page.tsx                 갤러리(목록) 페이지
   photos/[id]/page.tsx     사진 상세 페이지 (메타데이터 + 지도)
   upload/page.tsx          업로드 페이지 (클라이언트 컴포넌트)
+  sipe/admin/page.tsx      관리자 페이지 — 키 인증 후 사진 목록/삭제
   api/upload-url/route.ts  관리자 키 검증 후 Storage 서명 업로드 URL 발급
   api/photos/route.ts      업로드 완료 후 사진 메타데이터 레코드 생성
+  api/photos/[id]/route.ts 관리자 키 검증 후 사진(파일+레코드) 삭제
+  api/admin/verify/route.ts 관리자 페이지 진입용 키 검증
 lib/
   supabase.ts              anon/admin 클라이언트, public URL 헬퍼
   exif.ts                  브라우저 EXIF 추출 (exifr)
