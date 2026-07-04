@@ -7,6 +7,7 @@ interface CreatePhotographerBody {
   nickname?: string;
   skills?: string;
   snsUrl?: string;
+  email?: string;
   profileImagePath?: string;
 }
 
@@ -48,6 +49,13 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+  const email = body.email?.trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json(
+      { error: "이메일 형식이 올바르지 않습니다." },
+      { status: 400 }
+    );
+  }
 
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
@@ -57,6 +65,7 @@ export async function POST(req: NextRequest) {
       nickname: body.nickname?.trim() || null,
       skills: body.skills?.trim() || null,
       sns_url: snsUrl || null,
+      email: email || null,
       profile_image_path: body.profileImagePath || null,
     })
     .select("id")

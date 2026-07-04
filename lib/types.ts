@@ -4,6 +4,7 @@ export interface Photographer {
   nickname: string | null;
   skills: string | null;
   sns_url: string | null;
+  email: string | null;
   profile_image_path: string | null;
   created_at: string;
 }

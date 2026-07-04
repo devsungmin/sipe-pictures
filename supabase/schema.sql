@@ -9,6 +9,7 @@ create table if not exists public.photographers (
   nickname text,
   skills text,
   sns_url text,
+  email text,
   profile_image_path text,
   created_at timestamptz not null default now()
 );
@@ -16,6 +17,8 @@ create table if not exists public.photographers (
 -- 기존 프로젝트에 테이블이 이미 있을 때를 위한 컬럼 보강
 alter table public.photographers
   add column if not exists sns_url text;
+alter table public.photographers
+  add column if not exists email text;
 
 alter table public.photographers enable row level security;
 
