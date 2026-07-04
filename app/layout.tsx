@@ -24,6 +24,9 @@ export default function RootLayout({
               <Link href="/" className="hover:text-white">
                 갤러리
               </Link>
+              <Link href="/map" className="hover:text-white">
+                지도
+              </Link>
               <Link
                 href="/upload"
                 className="rounded-full bg-white px-4 py-1.5 font-medium text-black hover:bg-neutral-200"

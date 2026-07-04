@@ -4,7 +4,8 @@
 
 - SIPE 동아리 출사 모임 사진을 웹사이트에 올려 공유한다.
 - 사진의 EXIF 메타데이터(카메라, 렌즈, 조리개, 셔터 속도, ISO, 촬영 일시)를 추출해 사진 하단에 표시한다.
-- 사진의 GPS 메타데이터를 추출해 구글 지도(embed)에 촬영 위치를 표시한다.
+- 사진의 GPS 메타데이터를 추출해 상세 페이지의 구글 지도(embed)에 촬영 위치를 표시한다.
+- 지도 탭(`/map`)에서 위치 정보가 있는 모든 사진을 마커로 모아 볼 수 있다 (Leaflet + OpenStreetMap).
 - 로그인 없이 관리자 키(`ADMIN_UPLOAD_KEY`) 입력만으로 SIPE 회원이 사진을 업로드할 수 있다.
 
 ## 기술 스택
@@ -16,7 +17,8 @@
 - **배포**: Vercel (Hobby 플랜)
 - **사진 저장소 + DB**: Supabase (Storage + Postgres, Free 티어)
 - **EXIF 추출**: exifr (브라우저에서 처리, 서버로 원본 미전송)
-- **지도**: 구글 지도 iframe embed (API 키 불필요)
+- **지도 (상세 페이지)**: 구글 지도 iframe embed (API 키 불필요)
+- **지도 (지도 탭)**: Leaflet + OpenStreetMap 타일 (API 키·결제 불필요)
 
 ## 프로젝트 구조
 
@@ -24,6 +26,8 @@
 app/
   page.tsx                 갤러리(목록) 페이지
   photos/[id]/page.tsx     사진 상세 페이지 (메타데이터 + 지도)
+  map/page.tsx             지도 탭 — 위치 정보 있는 사진 목록 조회
+  map/photo-map.tsx        Leaflet 지도 렌더링 (클라이언트 컴포넌트)
   upload/page.tsx          업로드 페이지 (클라이언트 컴포넌트)
   sipe/admin/page.tsx      관리자 페이지 — 키 인증 후 사진 목록/삭제
   api/upload-url/route.ts  관리자 키 검증 후 Storage 서명 업로드 URL 발급
