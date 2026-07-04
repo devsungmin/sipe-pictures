@@ -5,20 +5,20 @@ import {
   photoPublicUrl,
 } from "@/lib/supabase";
 import { cameraLabel, formatTakenAt } from "@/lib/format";
-import type { Photo } from "@/lib/types";
+import type { PhotoWithPhotographer } from "@/lib/types";
 import ScrollReveal from "./scroll-reveal";
 
 export const dynamic = "force-dynamic";
 
-async function fetchPhotos(): Promise<Photo[]> {
+async function fetchPhotos(): Promise<PhotoWithPhotographer[]> {
   const supabase = getSupabaseAnon();
   const { data, error } = await supabase
     .from("photos")
-    .select("*")
+    .select("*, photographer:photographers(*)")
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (data ?? []) as PhotoWithPhotographer[];
 }
 
 /** Fisher-Yates 셔플 (원본 비변경) */
@@ -34,11 +34,11 @@ function shuffle<T>(items: T[]): T[] {
 interface DayGroup {
   key: string;
   label: string;
-  photos: Photo[];
+  photos: PhotoWithPhotographer[];
 }
 
 /** 촬영일(없으면 업로드일) 기준으로 KST 날짜별 그룹을 만든다. 최신 날짜 우선. */
-function groupByDay(photos: Photo[]): DayGroup[] {
+function groupByDay(photos: PhotoWithPhotographer[]): DayGroup[] {
   const keyFormat = new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Asia/Seoul",
     year: "numeric",
@@ -70,9 +70,16 @@ function groupByDay(photos: Photo[]): DayGroup[] {
     .map((group) => ({ ...group, photos: shuffle(group.photos) }));
 }
 
-function PhotoCard({ photo, delay }: { photo: Photo; delay: number }) {
+function PhotoCard({
+  photo,
+  delay,
+}: {
+  photo: PhotoWithPhotographer;
+  delay: number;
+}) {
   const camera = cameraLabel(photo.camera_make, photo.camera_model);
   const takenAt = formatTakenAt(photo.taken_at);
+  const photographerName = photo.photographer?.name ?? photo.uploader;
   return (
     <ScrollReveal delay={delay}>
       <Link
@@ -90,7 +97,29 @@ function PhotoCard({ photo, delay }: { photo: Photo; delay: number }) {
           />
         </div>
         <div className="px-4 py-3 text-sm">
-          <p className="font-medium text-neutral-100">{photo.title ?? "무제"}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate font-medium text-neutral-100">
+              {photo.title ?? "무제"}
+            </p>
+            {photographerName && (
+              <span className="flex shrink-0 items-center gap-1.5 text-xs text-neutral-300">
+                {photo.photographer?.profile_image_path ? (
+                  // 프로필 사진은 원형으로 보여준다.
+                  <img
+                    src={photoPublicUrl(photo.photographer.profile_image_path)}
+                    alt={photographerName}
+                    loading="lazy"
+                    className="h-5 w-5 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[10px]">
+                    📷
+                  </span>
+                )}
+                {photographerName}
+              </span>
+            )}
+          </div>
           <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-neutral-400">
             {camera && <span>{camera}</span>}
             {takenAt && <span>{takenAt}</span>}
@@ -118,7 +147,7 @@ export default async function GalleryPage() {
     );
   }
 
-  let photos: Photo[];
+  let photos: PhotoWithPhotographer[];
   try {
     photos = await fetchPhotos();
   } catch (e) {

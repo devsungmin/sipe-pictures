@@ -7,7 +7,7 @@
 - 사진의 GPS 메타데이터를 추출해 상세 페이지의 구글 지도(embed)에 촬영 위치를 표시한다.
 - 지도 탭(`/map`)에서 위치 정보가 있는 모든 사진을 마커로 모아 볼 수 있다 (Leaflet + OpenStreetMap).
 - 로그인 없이 관리자 키(`ADMIN_UPLOAD_KEY`) 입력만으로 SIPE 회원이 사진을 업로드할 수 있다. 업로드는 키 인증 → 업로드 폼의 2단계로 진행된다.
-- 사진사 프로필(원형 프로필 이미지, 이름, 닉네임, 주요 기술, SNS 링크)을 관리자 페이지에서 등록/삭제하고, 업로드 시 사진사를 선택해 연결한다. 프로필 페이지(`/photographers/[id]`)에서 사진사 정보와 그가 올린 사진을 함께 보여준다.
+- 사진사 프로필(원형 프로필 이미지 — 등록 시 영역 크롭, 이름, 닉네임, 주요 기술, SNS 링크, 이메일)을 관리자 페이지에서 등록/수정/삭제하고, 업로드 시 사진사를 선택해 연결한다. 작가 목록(`/photographers`)과 프로필 페이지(`/photographers/[id]`)에서 사진사 정보와 그가 올린 사진을 보여준다.
 
 ## 기술 스택
 
@@ -29,14 +29,18 @@ app/
   photos/[id]/page.tsx     사진 상세 페이지 (메타데이터 + 지도)
   map/page.tsx             지도 탭 — 위치 정보 있는 사진 목록 조회
   map/photo-map.tsx        Leaflet 지도 렌더링 (클라이언트 컴포넌트)
+  photographers/page.tsx   작가 목록 페이지
   photographers/[id]/page.tsx 사진사 프로필 + 올린 사진 목록
   upload/page.tsx          업로드 페이지 — 키 인증 후 업로드 폼 (2단계)
-  sipe/admin/page.tsx      관리자 페이지 — 키 인증 후 사진/사진사 관리
+  sipe/admin/page.tsx      관리자 허브 — 관리 항목 선택
+  sipe/admin/admin-gate.tsx 관리자 공용 인증 게이트 (sessionStorage로 키 유지)
+  sipe/admin/photos/page.tsx 사진 관리 — 목록/수정/삭제
+  sipe/admin/photographers/page.tsx 사진사 관리 — 등록(크롭)/수정/삭제
   api/upload-url/route.ts  관리자 키 검증 후 Storage 서명 업로드 URL 발급 (kind=profile이면 프로필 이미지 경로)
   api/photos/route.ts      업로드 완료 후 사진 메타데이터 레코드 생성
-  api/photos/[id]/route.ts 관리자 키 검증 후 사진(파일+레코드) 삭제
+  api/photos/[id]/route.ts 관리자 키 검증 후 사진 수정(PATCH)/삭제(DELETE)
   api/photographers/route.ts 관리자 키 검증 후 사진사 등록
-  api/photographers/[id]/route.ts 관리자 키 검증 후 사진사 삭제 (사진은 연결만 해제)
+  api/photographers/[id]/route.ts 관리자 키 검증 후 사진사 수정(PATCH)/삭제(DELETE, 사진은 연결만 해제)
   api/admin/verify/route.ts 관리자/업로드 페이지 진입용 키 검증
 lib/
   supabase.ts              anon/admin 클라이언트, public URL 헬퍼

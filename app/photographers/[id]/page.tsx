@@ -79,6 +79,14 @@ export default async function PhotographerPage({
             )}
             <p className="mt-2 flex flex-wrap items-center justify-center gap-x-4 text-sm text-neutral-400 sm:justify-start">
               <span>사진 {photoList.length}장</span>
+              {photographer.email && (
+                <a
+                  href={`mailto:${photographer.email}`}
+                  className="text-blue-400 hover:underline"
+                >
+                  {photographer.email}
+                </a>
+              )}
               {photographer.sns_url && (
                 <a
                   href={photographer.sns_url}
