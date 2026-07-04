@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin, PHOTOS_BUCKET } from "@/lib/supabase";
 
+// HEIC는 브라우저 호환성 때문에 업로드 페이지에서 JPEG로 변환한 뒤 올라온다.
 const ALLOWED_TYPES: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
-  "image/heic": "heic",
 };
 
 /**
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   const ext = ALLOWED_TYPES[body.contentType ?? ""];
   if (!ext) {
     return NextResponse.json(
-      { error: "지원하지 않는 이미지 형식입니다. (jpg, png, webp, heic)" },
+      { error: "지원하지 않는 이미지 형식입니다. (jpg, png, webp)" },
       { status: 400 }
     );
   }

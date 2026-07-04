@@ -7,22 +7,59 @@ import { getSupabaseAnon, PHOTOS_BUCKET } from "@/lib/supabase";
 
 type FileStatus = {
   name: string;
-  state: "대기" | "업로드 중" | "완료" | "실패";
+  state: "대기" | "변환 중" | "업로드 중" | "완료" | "실패";
   error?: string;
 };
+
+function isHeic(file: File): boolean {
+  // 브라우저에 따라 .heic 파일의 MIME 타입이 비어 있을 수 있어 확장자도 확인한다.
+  return (
+    file.type === "image/heic" ||
+    file.type === "image/heif" ||
+    /\.(heic|heif)$/i.test(file.name)
+  );
+}
+
+/** HEIC는 사파리 외 브라우저에서 표시되지 않으므로 업로드 전에 JPEG로 변환한다. */
+async function toDisplayableFile(file: File): Promise<File> {
+  if (!isHeic(file)) return file;
+  const heic2any = (await import("heic2any")).default;
+  try {
+    const converted = await heic2any({
+      blob: file,
+      toType: "image/jpeg",
+      quality: 0.9,
+    });
+    const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
+    return new File([jpegBlob], file.name.replace(/\.(heic|heif)$/i, ".jpg"), {
+      type: "image/jpeg",
+    });
+  } catch {
+    throw new Error(
+      "HEIC 변환에 실패했습니다. JPG로 변환한 뒤 다시 업로드해 주세요."
+    );
+  }
+}
 
 async function uploadOne(
   file: File,
   adminKey: string,
   fields: { title: string; description: string; uploader: string },
-  isSingle: boolean
+  isSingle: boolean,
+  onProgress: (state: "변환 중" | "업로드 중") => void
 ): Promise<void> {
+  // EXIF(GPS 포함)는 변환 전 원본에서 추출한다. (exifr는 HEIC도 지원)
   const exif = await extractExif(file);
+
+  const needsConvert = isHeic(file);
+  if (needsConvert) onProgress("변환 중");
+  const uploadFile = await toDisplayableFile(file);
+  if (needsConvert) onProgress("업로드 중");
 
   const urlRes = await fetch("/api/upload-url", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ adminKey, contentType: file.type }),
+    body: JSON.stringify({ adminKey, contentType: uploadFile.type }),
   });
   const urlJson = await urlRes.json();
   if (!urlRes.ok) throw new Error(urlJson.error ?? "업로드 URL 발급 실패");
@@ -30,7 +67,7 @@ async function uploadOne(
   const supabase = getSupabaseAnon();
   const { error: uploadError } = await supabase.storage
     .from(PHOTOS_BUCKET)
-    .uploadToSignedUrl(urlJson.path, urlJson.token, file);
+    .uploadToSignedUrl(urlJson.path, urlJson.token, uploadFile);
   if (uploadError) throw new Error(`파일 업로드 실패: ${uploadError.message}`);
 
   const title = isSingle
@@ -83,7 +120,11 @@ export default function UploadPage() {
           files[i],
           adminKey,
           { title, description, uploader },
-          files.length === 1
+          files.length === 1,
+          (state) => {
+            next[i] = { ...next[i], state };
+            setStatuses([...next]);
+          }
         );
         next[i] = { ...next[i], state: "완료" };
       } catch (err) {
@@ -138,12 +179,13 @@ export default function UploadPage() {
             type="file"
             required
             multiple
-            accept="image/jpeg,image/png,image/webp,image/heic"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
             onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
             className="w-full text-sm text-neutral-300 file:mr-3 file:rounded-full file:border-0 file:bg-white file:px-4 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:bg-neutral-200"
           />
           <p className="mt-1 text-xs text-neutral-500">
-            jpg, png, webp, heic · 여러 장 선택 가능
+            jpg, png, webp, heic · 여러 장 선택 가능 (heic는 자동으로 jpg로
+            변환되어 올라갑니다)
           </p>
         </div>
 
