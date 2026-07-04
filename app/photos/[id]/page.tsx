@@ -13,7 +13,7 @@ import {
   formatIso,
   formatTakenAt,
 } from "@/lib/format";
-import type { Photo } from "@/lib/types";
+import type { PhotoWithPhotographer } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -38,9 +38,9 @@ export default async function PhotoDetailPage({
   const supabase = getSupabaseAnon();
   const { data: photo } = (await supabase
     .from("photos")
-    .select("*")
+    .select("*, photographer:photographers(*)")
     .eq("id", id)
-    .maybeSingle()) as { data: Photo | null };
+    .maybeSingle()) as { data: PhotoWithPhotographer | null };
 
   if (!photo) notFound();
 
@@ -76,10 +76,31 @@ export default async function PhotoDetailPage({
             {photo.description}
           </p>
         )}
-        {photo.uploader && (
-          <p className="mt-2 text-sm text-neutral-500">
-            올린 사람: {photo.uploader}
-          </p>
+        {photo.photographer ? (
+          <Link
+            href={`/photographers/${photo.photographer.id}`}
+            className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 py-1 pl-1 pr-3 text-sm text-neutral-200 transition hover:border-white/30 hover:bg-white/10"
+          >
+            {photo.photographer.profile_image_path ? (
+              // 프로필 사진은 원형으로 보여준다.
+              <img
+                src={photoPublicUrl(photo.photographer.profile_image_path)}
+                alt={photo.photographer.name}
+                className="h-7 w-7 rounded-full object-cover"
+              />
+            ) : (
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-sm">
+                📷
+              </span>
+            )}
+            {photo.photographer.name}
+          </Link>
+        ) : (
+          photo.uploader && (
+            <p className="mt-2 text-sm text-neutral-500">
+              올린 사람: {photo.uploader}
+            </p>
+          )
         )}
       </div>
 
