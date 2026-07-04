@@ -33,8 +33,12 @@ export async function extractExif(file: File): Promise<ExifData> {
         "CreateDate",
         "ExifImageWidth",
         "ExifImageHeight",
+        // pick 목록에 없는 블록은 gps:true를 줘도 파싱되지 않으므로 GPS 태그를 명시한다.
+        "GPSLatitude",
+        "GPSLatitudeRef",
+        "GPSLongitude",
+        "GPSLongitudeRef",
       ],
-      gps: true,
     });
     if (!tags) return empty;
 
