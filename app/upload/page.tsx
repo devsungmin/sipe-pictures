@@ -2,14 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { extractExif } from "@/lib/exif";
 import { getSupabaseAnon, PHOTOS_BUCKET } from "@/lib/supabase";
+import type { Photographer } from "@/lib/types";
 
 type FileStatus = {
   name: string;
   state: "대기" | "변환 중" | "업로드 중" | "완료" | "실패";
   error?: string;
 };
+
+const inputCls =
+  "w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-neutral-500 focus:border-white/40";
 
 function isHeic(file: File): boolean {
   // 브라우저에 따라 .heic 파일의 MIME 타입이 비어 있을 수 있어 확장자도 확인한다.
@@ -44,7 +49,7 @@ async function toDisplayableFile(file: File): Promise<File> {
 async function uploadOne(
   file: File,
   adminKey: string,
-  fields: { title: string; description: string; uploader: string },
+  fields: { title: string; description: string; photographerId: string },
   isSingle: boolean,
   onProgress: (state: "변환 중" | "업로드 중") => void
 ): Promise<void> {
@@ -82,7 +87,7 @@ async function uploadOne(
       storagePath: urlJson.path,
       title,
       description: fields.description,
-      uploader: fields.uploader,
+      photographerId: fields.photographerId || undefined,
       exif,
     }),
   });
@@ -90,15 +95,95 @@ async function uploadOne(
   if (!photoRes.ok) throw new Error(photoJson.error ?? "사진 정보 저장 실패");
 }
 
+/** 1단계: 관리자 키 인증 화면 */
+function AdminKeyGate({
+  onVerified,
+}: {
+  onVerified: (adminKey: string) => void;
+}) {
+  const [adminKey, setAdminKey] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (verifying) return;
+    setVerifying(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminKey }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "인증에 실패했습니다.");
+      onVerified(adminKey);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-sm py-16">
+      <h1 className="text-2xl font-semibold">사진 업로드</h1>
+      <p className="mt-2 text-sm text-neutral-400">
+        SIPE 회원에게 공유된 관리자 키를 입력하면 업로드를 진행할 수 있어요.
+      </p>
+      <form onSubmit={onSubmit} className="mt-8 space-y-4">
+        <input
+          type="password"
+          required
+          autoFocus
+          value={adminKey}
+          onChange={(e) => setAdminKey(e.target.value)}
+          placeholder="관리자 키"
+          className={inputCls}
+        />
+        {error && <p className="text-sm text-red-400">{error}</p>}
+        <button
+          type="submit"
+          disabled={verifying || adminKey.length === 0}
+          className="w-full rounded-full bg-white py-2.5 text-sm font-semibold text-black hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {verifying ? "확인 중..." : "다음"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 export default function UploadPage() {
   const router = useRouter();
-  const [adminKey, setAdminKey] = useState("");
-  const [uploader, setUploader] = useState("");
+  const [adminKey, setAdminKey] = useState<string | null>(null);
+  const [photographers, setPhotographers] = useState<Photographer[]>([]);
+  const [photographerId, setPhotographerId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [statuses, setStatuses] = useState<FileStatus[]>([]);
   const [busy, setBusy] = useState(false);
+
+  const onVerified = async (key: string) => {
+    setAdminKey(key);
+    try {
+      const supabase = getSupabaseAnon();
+      const { data } = await supabase
+        .from("photographers")
+        .select("*")
+        .order("name");
+      setPhotographers(data ?? []);
+    } catch {
+      setPhotographers([]);
+    }
+  };
+
+  // URL로 바로 들어와도 관리자 키 인증을 먼저 통과해야 업로드 폼이 보인다.
+  if (adminKey === null) {
+    return <AdminKeyGate onVerified={onVerified} />;
+  }
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,7 +204,7 @@ export default function UploadPage() {
         await uploadOne(
           files[i],
           adminKey,
-          { title, description, uploader },
+          { title, description, photographerId },
           files.length === 1,
           (state) => {
             next[i] = { ...next[i], state };
@@ -145,32 +230,15 @@ export default function UploadPage() {
     }
   };
 
-  const inputCls =
-    "w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-neutral-500 focus:border-white/40";
-
   return (
     <div className="mx-auto max-w-xl">
       <h1 className="text-2xl font-semibold">사진 업로드</h1>
       <p className="mt-2 text-sm text-neutral-400">
-        SIPE 회원에게 공유된 관리자 키를 입력하면 사진을 올릴 수 있어요. EXIF
-        메타데이터(카메라, 촬영 설정, 위치)는 자동으로 추출됩니다.
+        관리자 키 인증이 완료됐어요. EXIF 메타데이터(카메라, 촬영 설정, 위치)는
+        자동으로 추출됩니다.
       </p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-5">
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
-            관리자 키 <span className="text-red-400">*</span>
-          </label>
-          <input
-            type="password"
-            required
-            value={adminKey}
-            onChange={(e) => setAdminKey(e.target.value)}
-            placeholder="관리자 키를 입력하세요"
-            className={inputCls}
-          />
-        </div>
-
         <div>
           <label className="mb-1.5 block text-sm font-medium">
             사진 파일 <span className="text-red-400">*</span>
@@ -190,13 +258,35 @@ export default function UploadPage() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium">올린 사람</label>
-          <input
-            value={uploader}
-            onChange={(e) => setUploader(e.target.value)}
-            placeholder="이름 또는 닉네임"
-            className={inputCls}
-          />
+          <label className="mb-1.5 block text-sm font-medium">
+            사진사 <span className="text-red-400">*</span>
+          </label>
+          {photographers.length === 0 ? (
+            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-200">
+              등록된 사진사가 없어요.{" "}
+              <Link href="/sipe/admin" className="underline">
+                관리자 페이지
+              </Link>
+              에서 사진사를 먼저 등록해 주세요.
+            </p>
+          ) : (
+            <select
+              required
+              value={photographerId}
+              onChange={(e) => setPhotographerId(e.target.value)}
+              className={`${inputCls} [&>option]:bg-neutral-900`}
+            >
+              <option value="" disabled>
+                사진사를 선택하세요
+              </option>
+              {photographers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                  {p.nickname ? ` (${p.nickname})` : ""}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {files.length <= 1 && (
@@ -224,10 +314,12 @@ export default function UploadPage() {
 
         <button
           type="submit"
-          disabled={busy || files.length === 0}
+          disabled={busy || files.length === 0 || photographers.length === 0}
           className="w-full rounded-full bg-white py-2.5 text-sm font-semibold text-black hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {busy ? "업로드 중..." : `업로드${files.length > 1 ? ` (${files.length}장)` : ""}`}
+          {busy
+            ? "업로드 중..."
+            : `업로드${files.length > 1 ? ` (${files.length}장)` : ""}`}
         </button>
       </form>
 
