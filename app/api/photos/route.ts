@@ -7,7 +7,7 @@ interface CreatePhotoBody {
   storagePath?: string;
   title?: string;
   description?: string;
-  uploader?: string;
+  photographerId?: string;
   exif?: Partial<ExifData>;
 }
 
@@ -55,13 +55,31 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // 사진사가 지정됐으면 실제 존재하는지 확인하고, 표시용 이름(uploader)도 함께 저장한다.
+  let photographerName: string | null = null;
+  if (body.photographerId) {
+    const { data: photographer } = await supabase
+      .from("photographers")
+      .select("name")
+      .eq("id", body.photographerId)
+      .maybeSingle();
+    if (!photographer) {
+      return NextResponse.json(
+        { error: "존재하지 않는 사진사입니다." },
+        { status: 400 }
+      );
+    }
+    photographerName = photographer.name;
+  }
+
   const exif = body.exif ?? {};
   const { data, error } = await supabase
     .from("photos")
     .insert({
       title: body.title?.trim() || null,
       description: body.description?.trim() || null,
-      uploader: body.uploader?.trim() || null,
+      photographer_id: body.photographerId || null,
+      uploader: photographerName,
       storage_path: body.storagePath,
       taken_at: exif.taken_at ?? null,
       camera_make: exif.camera_make ?? null,

@@ -13,7 +13,7 @@ const ALLOWED_TYPES: Record<string, string> = {
  * 서명 URL을 발급한다. (Vercel 무료 플랜의 요청 크기 제한을 우회)
  */
 export async function POST(req: NextRequest) {
-  let body: { adminKey?: string; contentType?: string };
+  let body: { adminKey?: string; contentType?: string; kind?: string };
   try {
     body = await req.json();
   } catch {
@@ -42,7 +42,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const path = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${ext}`;
+  // 사진사 프로필 이미지는 profiles/ 아래에, 출사 사진은 날짜 폴더 아래에 저장한다.
+  const prefix =
+    body.kind === "profile"
+      ? "profiles"
+      : new Date().toISOString().slice(0, 10);
+  const path = `${prefix}/${crypto.randomUUID()}.${ext}`;
 
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase.storage
