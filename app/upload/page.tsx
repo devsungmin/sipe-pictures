@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { extractExif } from "@/lib/exif";
 import { getSupabaseAnon, PHOTOS_BUCKET } from "@/lib/supabase";
-import type { Photographer } from "@/lib/types";
+import type { ExifData, Photographer } from "@/lib/types";
+import LocationPicker, { type PickedLocation } from "./location-picker";
+
+interface UploadItem {
+  file: File;
+  exif: ExifData;
+}
 
 type FileStatus = {
   name: string;
@@ -48,14 +54,12 @@ async function toDisplayableFile(file: File): Promise<File> {
 
 async function uploadOne(
   file: File,
+  exif: ExifData,
   adminKey: string,
   fields: { title: string; description: string; photographerId: string },
   isSingle: boolean,
   onProgress: (state: "변환 중" | "업로드 중") => void
 ): Promise<void> {
-  // EXIF(GPS 포함)는 변환 전 원본에서 추출한다. (exifr는 HEIC도 지원)
-  const exif = await extractExif(file);
-
   const needsConvert = isHeic(file);
   if (needsConvert) onProgress("변환 중");
   const uploadFile = await toDisplayableFile(file);
@@ -162,9 +166,31 @@ export default function UploadPage() {
   const [photographerId, setPhotographerId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
+  const [items, setItems] = useState<UploadItem[]>([]);
+  const [extracting, setExtracting] = useState(false);
+  const [manualLocation, setManualLocation] = useState<PickedLocation | null>(
+    null
+  );
   const [statuses, setStatuses] = useState<FileStatus[]>([]);
   const [busy, setBusy] = useState(false);
+
+  // 파일 선택 시 EXIF를 미리 읽어 위치 정보가 없는 사진을 파악한다.
+  const onFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    setItems([]);
+    setStatuses([]);
+    if (files.length === 0) return;
+    setExtracting(true);
+    const extracted = await Promise.all(
+      files.map(async (file) => ({ file, exif: await extractExif(file) }))
+    );
+    setItems(extracted);
+    setExtracting(false);
+  };
+
+  const noLocationCount = items.filter(
+    (item) => item.exif.latitude == null || item.exif.longitude == null
+  ).length;
 
   const onVerified = async (key: string) => {
     setAdminKey(key);
@@ -187,25 +213,36 @@ export default function UploadPage() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (files.length === 0 || busy) return;
+    if (items.length === 0 || busy) return;
 
     setBusy(true);
-    const next: FileStatus[] = files.map((f) => ({
-      name: f.name,
+    const next: FileStatus[] = items.map(({ file }) => ({
+      name: file.name,
       state: "대기",
     }));
     setStatuses([...next]);
 
     let failed = 0;
-    for (let i = 0; i < files.length; i++) {
+    for (let i = 0; i < items.length; i++) {
       next[i] = { ...next[i], state: "업로드 중" };
       setStatuses([...next]);
       try {
+        const { file, exif } = items[i];
+        // 위치 정보가 없는 사진에는 지도에서 직접 지정한 위치를 적용한다.
+        const effectiveExif =
+          (exif.latitude == null || exif.longitude == null) && manualLocation
+            ? {
+                ...exif,
+                latitude: manualLocation.lat,
+                longitude: manualLocation.lng,
+              }
+            : exif;
         await uploadOne(
-          files[i],
+          file,
+          effectiveExif,
           adminKey,
           { title, description, photographerId },
-          files.length === 1,
+          items.length === 1,
           (state) => {
             next[i] = { ...next[i], state };
             setStatuses([...next]);
@@ -248,7 +285,7 @@ export default function UploadPage() {
             required
             multiple
             accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
-            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+            onChange={onFilesChange}
             className="w-full text-sm text-neutral-300 file:mr-3 file:rounded-full file:border-0 file:bg-white file:px-4 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:bg-neutral-200"
           />
           <p className="mt-1 text-xs text-neutral-500">
@@ -256,6 +293,32 @@ export default function UploadPage() {
             변환되어 올라갑니다)
           </p>
         </div>
+
+        {noLocationCount > 0 && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium">
+              촬영 위치 <span className="text-neutral-500">(선택)</span>
+            </label>
+            <p className="mb-2 text-xs text-neutral-500">
+              위치 정보(GPS)가 없는 사진이 {noLocationCount}장 있어요. 지도를
+              클릭해 촬영 위치를 지정하면 해당 사진에 적용됩니다.
+            </p>
+            <LocationPicker value={manualLocation} onChange={setManualLocation} />
+            {manualLocation && (
+              <p className="mt-2 flex items-center gap-3 text-xs text-neutral-400">
+                선택된 위치: {manualLocation.lat.toFixed(5)},{" "}
+                {manualLocation.lng.toFixed(5)}
+                <button
+                  type="button"
+                  onClick={() => setManualLocation(null)}
+                  className="text-red-300 hover:underline"
+                >
+                  지정 해제
+                </button>
+              </p>
+            )}
+          </div>
+        )}
 
         <div>
           <label className="mb-1.5 block text-sm font-medium">
@@ -289,7 +352,7 @@ export default function UploadPage() {
           )}
         </div>
 
-        {files.length <= 1 && (
+        {items.length <= 1 && (
           <div>
             <label className="mb-1.5 block text-sm font-medium">제목</label>
             <input
@@ -314,12 +377,16 @@ export default function UploadPage() {
 
         <button
           type="submit"
-          disabled={busy || files.length === 0 || photographers.length === 0}
+          disabled={
+            busy || extracting || items.length === 0 || photographers.length === 0
+          }
           className="w-full rounded-full bg-white py-2.5 text-sm font-semibold text-black hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {busy
             ? "업로드 중..."
-            : `업로드${files.length > 1 ? ` (${files.length}장)` : ""}`}
+            : extracting
+              ? "사진 정보 확인 중..."
+              : `업로드${items.length > 1 ? ` (${items.length}장)` : ""}`}
         </button>
       </form>
 

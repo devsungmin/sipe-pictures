@@ -6,6 +6,9 @@ import AdminGate from "../admin-gate";
 import { getSupabaseAnon, photoPublicUrl } from "@/lib/supabase";
 import { cameraLabel, formatTakenAt } from "@/lib/format";
 import type { Photo, Photographer } from "@/lib/types";
+import LocationPicker, {
+  type PickedLocation,
+} from "@/app/upload/location-picker";
 
 const inputCls =
   "w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-neutral-500 focus:border-white/40";
@@ -31,6 +34,11 @@ function PhotoEditForm({
   const [photographerId, setPhotographerId] = useState(
     photo.photographer_id ?? ""
   );
+  const [location, setLocation] = useState<PickedLocation | null>(
+    photo.latitude != null && photo.longitude != null
+      ? { lat: photo.latitude, lng: photo.longitude }
+      : null
+  );
   const [saving, setSaving] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -47,6 +55,8 @@ function PhotoEditForm({
           title,
           description,
           photographerId: photographerId || null,
+          latitude: location?.lat ?? null,
+          longitude: location?.lng ?? null,
         }),
       });
       const json = await res.json();
@@ -87,6 +97,24 @@ function PhotoEditForm({
           </option>
         ))}
       </select>
+      <div>
+        <p className="mb-2 text-xs text-neutral-500">
+          촬영 위치 — 지도를 클릭해 지정하거나 변경할 수 있어요.
+        </p>
+        <LocationPicker value={location} onChange={setLocation} />
+        {location && (
+          <p className="mt-2 flex items-center gap-3 text-xs text-neutral-400">
+            선택된 위치: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+            <button
+              type="button"
+              onClick={() => setLocation(null)}
+              className="text-red-300 hover:underline"
+            >
+              위치 제거
+            </button>
+          </p>
+        )}
+      </div>
       <div className="flex gap-2">
         <button
           type="submit"
@@ -114,6 +142,14 @@ function PhotoManager({ adminKey }: { adminKey: string }) {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // 작가별 필터: "" = 전체, "none" = 작가 미지정, 그 외 = 작가 id
+  const [photographerFilter, setPhotographerFilter] = useState("");
+
+  const filteredPhotos = photos.filter((photo) => {
+    if (photographerFilter === "") return true;
+    if (photographerFilter === "none") return photo.photographer_id === null;
+    return photo.photographer_id === photographerFilter;
+  });
 
   const load = async () => {
     setLoading(true);
@@ -187,7 +223,9 @@ function PhotoManager({ adminKey }: { adminKey: string }) {
         <h1 className="text-2xl font-semibold">
           사진 관리{" "}
           <span className="text-sm font-normal text-neutral-400">
-            {photos.length}장
+            {photographerFilter === ""
+              ? `${photos.length}장`
+              : `${filteredPhotos.length}장 / 전체 ${photos.length}장`}
           </span>
         </h1>
         <button
@@ -199,19 +237,39 @@ function PhotoManager({ adminKey }: { adminKey: string }) {
         </button>
       </div>
 
+      <div className="flex items-center gap-2">
+        <label className="shrink-0 text-sm text-neutral-400">작가 필터</label>
+        <select
+          value={photographerFilter}
+          onChange={(e) => setPhotographerFilter(e.target.value)}
+          className={`${inputCls} max-w-60 [&>option]:bg-neutral-900`}
+        >
+          <option value="">전체 작가</option>
+          <option value="none">작가 미지정</option>
+          {photographers.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+              {p.nickname ? ` (${p.nickname})` : ""}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
           {error}
         </div>
       )}
 
-      {photos.length === 0 && !loading ? (
+      {filteredPhotos.length === 0 && !loading ? (
         <p className="py-16 text-center text-neutral-400">
-          업로드된 사진이 없습니다.
+          {photos.length === 0
+            ? "업로드된 사진이 없습니다."
+            : "이 작가의 사진이 없습니다."}
         </p>
       ) : (
         <ul className="space-y-3">
-          {photos.map((photo) => {
+          {filteredPhotos.map((photo) => {
             const camera = cameraLabel(photo.camera_make, photo.camera_model);
             const takenAt = formatTakenAt(photo.taken_at);
             return (

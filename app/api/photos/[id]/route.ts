@@ -6,6 +6,8 @@ interface UpdatePhotoBody {
   title?: string;
   description?: string;
   photographerId?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 /** 관리자 키를 검증한 뒤 사진 정보(제목, 설명, 작가)를 수정한다. */
@@ -54,6 +56,22 @@ export async function PATCH(
     photographerName = photographer.name;
   }
 
+  // 위치는 위도/경도가 함께 유효한 숫자일 때만 저장하고, 아니면 제거한다.
+  const { latitude, longitude } = body;
+  const hasLocation =
+    typeof latitude === "number" &&
+    Number.isFinite(latitude) &&
+    Math.abs(latitude) <= 90 &&
+    typeof longitude === "number" &&
+    Number.isFinite(longitude) &&
+    Math.abs(longitude) <= 180;
+  if ((latitude != null || longitude != null) && !hasLocation) {
+    return NextResponse.json(
+      { error: "위치 좌표가 올바르지 않습니다." },
+      { status: 400 }
+    );
+  }
+
   const { data, error } = await supabase
     .from("photos")
     .update({
@@ -61,6 +79,8 @@ export async function PATCH(
       description: body.description?.trim() || null,
       photographer_id: body.photographerId || null,
       uploader: photographerName,
+      latitude: hasLocation ? latitude : null,
+      longitude: hasLocation ? longitude : null,
     })
     .eq("id", id)
     .select("id")
