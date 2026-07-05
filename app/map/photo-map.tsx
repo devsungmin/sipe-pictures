@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Map as LeafletMap } from "leaflet";
+import type { Map as LeafletMap, Marker, MarkerCluster } from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
 
 export interface MapPhoto {
   id: string;
@@ -47,15 +48,11 @@ function groupByLocation(photos: MapPhoto[]): LocationGroup[] {
   }));
 }
 
-/** 마커 아이콘 — 그룹에서 랜덤으로 고른 사진 1장을 썸네일로 쓰고, 여러 장이면 장수 배지를 단다. */
-function markerHtml(group: LocationGroup): string {
-  const representative =
-    group.photos[Math.floor(Math.random() * group.photos.length)];
-  const count = group.photos.length;
-  const alt = escapeHtml(representative.title ?? "SIPE 출사 사진");
+/** 사진 썸네일 마커 HTML — 여러 장이면 장수 배지를 단다. */
+function thumbnailHtml(imageUrl: string, alt: string, count: number): string {
   return `
     <div style="position:relative;width:52px;height:52px;">
-      <img src="${representative.imageUrl}" alt="${alt}" loading="lazy"
+      <img src="${imageUrl}" alt="${escapeHtml(alt)}" loading="lazy"
         style="width:52px;height:52px;object-fit:cover;border-radius:12px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);display:block;" />
       ${
         count > 1
@@ -104,6 +101,7 @@ export default function PhotoMap({ photos }: { photos: MapPhoto[] }) {
     (async () => {
       // Leaflet은 window에 의존하므로 브라우저에서만 로드한다.
       const L = (await import("leaflet")).default;
+      await import("leaflet.markercluster"); // L에 markerClusterGroup을 추가하는 플러그인
       if (cancelled || !containerRef.current || mapRef.current) return;
 
       const map = L.map(containerRef.current, { scrollWheelZoom: true }).setView(
@@ -118,22 +116,65 @@ export default function PhotoMap({ photos }: { photos: MapPhoto[] }) {
         maxZoom: 19,
       }).addTo(map);
 
+      // 클러스터 아이콘에서 대표 사진을 고를 수 있도록 마커별 메타데이터를 보관한다.
+      const markerMeta = new WeakMap<
+        Marker,
+        { imageUrl: string; alt: string; count: number }
+      >();
+
       const markers = groupByLocation(photos).map((group) => {
+        const representative =
+          group.photos[Math.floor(Math.random() * group.photos.length)];
+        const alt = representative.title ?? "SIPE 출사 사진";
         const icon = L.divIcon({
           className: "",
-          html: markerHtml(group),
+          html: thumbnailHtml(representative.imageUrl, alt, group.photos.length),
           iconSize: [52, 52],
           iconAnchor: [26, 26],
           popupAnchor: [0, -30],
         });
-        return L.marker([group.lat, group.lng], { icon })
-          .addTo(map)
-          .bindPopup(popupHtml(group), { closeButton: false });
+        const marker = L.marker([group.lat, group.lng], { icon }).bindPopup(
+          popupHtml(group),
+          { closeButton: false }
+        );
+        markerMeta.set(marker, {
+          imageUrl: representative.imageUrl,
+          alt,
+          count: group.photos.length,
+        });
+        return marker;
       });
 
+      // 마커가 많아져도 지도가 느려지지 않도록 가까운 마커를 클러스터로 묶는다.
+      const clusterGroup = L.markerClusterGroup({
+        chunkedLoading: true,
+        showCoverageOnHover: false,
+        maxClusterRadius: 60,
+        iconCreateFunction: (cluster: MarkerCluster) => {
+          const children = cluster.getAllChildMarkers();
+          const metas = children
+            .map((child) => markerMeta.get(child))
+            .filter(Boolean) as { imageUrl: string; alt: string; count: number }[];
+          const representative =
+            metas[Math.floor(Math.random() * metas.length)];
+          const total = metas.reduce((sum, meta) => sum + meta.count, 0);
+          return L.divIcon({
+            className: "",
+            html: thumbnailHtml(
+              representative.imageUrl,
+              representative.alt,
+              total
+            ),
+            iconSize: [52, 52],
+            iconAnchor: [26, 26],
+          });
+        },
+      });
+      markers.forEach((marker) => clusterGroup.addLayer(marker));
+      map.addLayer(clusterGroup);
+
       if (markers.length > 0) {
-        const bounds = L.featureGroup(markers).getBounds().pad(0.2);
-        map.fitBounds(bounds, { maxZoom: 15 });
+        map.fitBounds(clusterGroup.getBounds().pad(0.2), { maxZoom: 15 });
       }
     })();
 
