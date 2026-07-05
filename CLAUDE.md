@@ -20,6 +20,7 @@
 - **EXIF 추출**: exifr (브라우저에서 처리, 서버로 원본 미전송)
 - **지도 (상세 페이지)**: 구글 지도 iframe embed (API 키 불필요)
 - **지도 (지도 탭)**: Leaflet + OpenStreetMap 타일 (API 키·결제 불필요)
+- **지역 검색 (위치 지정)**: Nominatim — OpenStreetMap 지오코딩 (API 키 불필요, 저빈도 사용 정책 준수: 버튼/엔터로만 검색)
 
 ## 프로젝트 구조
 
