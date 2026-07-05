@@ -259,15 +259,15 @@ export default function UploadPage() {
 
         <div>
           <label className="mb-1.5 block text-sm font-medium">
-            사진사 <span className="text-red-400">*</span>
+            작가 <span className="text-red-400">*</span>
           </label>
           {photographers.length === 0 ? (
             <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-200">
-              등록된 사진사가 없어요.{" "}
+              등록된 작가가 없어요.{" "}
               <Link href="/sipe/admin" className="underline">
                 관리자 페이지
               </Link>
-              에서 사진사를 먼저 등록해 주세요.
+              에서 작가를 먼저 등록해 주세요.
             </p>
           ) : (
             <select
@@ -277,7 +277,7 @@ export default function UploadPage() {
               className={`${inputCls} [&>option]:bg-neutral-900`}
             >
               <option value="" disabled>
-                사진사를 선택하세요
+                작가를 선택하세요
               </option>
               {photographers.map((p) => (
                 <option key={p.id} value={p.id}>

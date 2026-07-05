@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 사진사 프로필 이미지는 profiles/ 아래에, 출사 사진은 날짜 폴더 아래에 저장한다.
+  // 작가 프로필 이미지는 profiles/ 아래에, 출사 사진은 날짜 폴더 아래에 저장한다.
   const prefix =
     body.kind === "profile"
       ? "profiles"

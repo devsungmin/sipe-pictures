@@ -79,7 +79,7 @@ function PhotoEditForm({
         onChange={(e) => setPhotographerId(e.target.value)}
         className={`${inputCls} [&>option]:bg-neutral-900`}
       >
-        <option value="">사진사 미지정</option>
+        <option value="">작가 미지정</option>
         {photographers.map((p) => (
           <option key={p.id} value={p.id}>
             {p.name}

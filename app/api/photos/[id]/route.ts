@@ -8,7 +8,7 @@ interface UpdatePhotoBody {
   photographerId?: string | null;
 }
 
-/** 관리자 키를 검증한 뒤 사진 정보(제목, 설명, 사진사)를 수정한다. */
+/** 관리자 키를 검증한 뒤 사진 정보(제목, 설명, 작가)를 수정한다. */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -37,7 +37,7 @@ export async function PATCH(
   const { id } = await params;
   const supabase = getSupabaseAdmin();
 
-  // 사진사가 지정됐으면 존재 여부를 확인하고 표시용 이름도 함께 갱신한다.
+  // 작가가 지정됐으면 존재 여부를 확인하고 표시용 이름도 함께 갱신한다.
   let photographerName: string | null = null;
   if (body.photographerId) {
     const { data: photographer } = await supabase
@@ -47,7 +47,7 @@ export async function PATCH(
       .maybeSingle();
     if (!photographer) {
       return NextResponse.json(
-        { error: "존재하지 않는 사진사입니다." },
+        { error: "존재하지 않는 작가입니다." },
         { status: 400 }
       );
     }

@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 사진사가 지정됐으면 실제 존재하는지 확인하고, 표시용 이름(uploader)도 함께 저장한다.
+  // 작가가 지정됐으면 실제 존재하는지 확인하고, 표시용 이름(uploader)도 함께 저장한다.
   let photographerName: string | null = null;
   if (body.photographerId) {
     const { data: photographer } = await supabase
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
     if (!photographer) {
       return NextResponse.json(
-        { error: "존재하지 않는 사진사입니다." },
+        { error: "존재하지 않는 작가입니다." },
         { status: 400 }
       );
     }

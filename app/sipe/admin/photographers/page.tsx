@@ -159,7 +159,7 @@ function PhotographerManager({ adminKey }: { adminKey: string }) {
       setPhotographers(data ?? []);
     } catch (e) {
       setError(
-        `사진사 목록을 불러오지 못했습니다: ${e instanceof Error ? e.message : String(e)}`
+        `작가 목록을 불러오지 못했습니다: ${e instanceof Error ? e.message : String(e)}`
       );
     } finally {
       setLoading(false);
@@ -254,7 +254,7 @@ function PhotographerManager({ adminKey }: { adminKey: string }) {
       const json = await res.json();
       if (!res.ok) {
         throw new Error(
-          json.error ?? (editingId ? "사진사 수정 실패" : "사진사 등록 실패")
+          json.error ?? (editingId ? "작가 수정 실패" : "작가 등록 실패")
         );
       }
 
@@ -270,7 +270,7 @@ function PhotographerManager({ adminKey }: { adminKey: string }) {
   const onDelete = async (photographer: Photographer) => {
     if (
       !window.confirm(
-        `사진사 "${photographer.name}"을(를) 삭제할까요? 올린 사진은 남지만 연결이 해제됩니다.`
+        `작가 "${photographer.name}"을(를) 삭제할까요? 올린 사진은 남지만 연결이 해제됩니다.`
       )
     ) {
       return;
@@ -305,7 +305,7 @@ function PhotographerManager({ adminKey }: { adminKey: string }) {
 
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">
-          사진사 관리{" "}
+          작가 관리{" "}
           <span className="text-sm font-normal text-neutral-400">
             {photographers.length}명
           </span>
@@ -386,7 +386,7 @@ function PhotographerManager({ adminKey }: { adminKey: string }) {
       >
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-neutral-200">
-            {editing ? `"${editing.name}" 수정` : "새 사진사 등록"}
+            {editing ? `"${editing.name}" 수정` : "새 작가 등록"}
           </p>
           {editing && (
             <button
@@ -461,7 +461,7 @@ function PhotographerManager({ adminKey }: { adminKey: string }) {
           disabled={saving || name.trim().length === 0}
           className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {saving ? "저장 중..." : editing ? "수정 저장" : "사진사 등록"}
+          {saving ? "저장 중..." : editing ? "수정 저장" : "작가 등록"}
         </button>
       </form>
     </div>

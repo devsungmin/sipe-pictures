@@ -11,7 +11,7 @@ interface UpdatePhotographerBody {
   profileImagePath?: string;
 }
 
-/** 관리자 키를 검증한 뒤 사진사 프로필을 수정한다. */
+/** 관리자 키를 검증한 뒤 작가 프로필을 수정한다. */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -69,7 +69,7 @@ export async function PATCH(
     .maybeSingle();
   if (fetchError || !existing) {
     return NextResponse.json(
-      { error: "사진사를 찾을 수 없습니다." },
+      { error: "작가를 찾을 수 없습니다." },
       { status: 404 }
     );
   }
@@ -90,12 +90,12 @@ export async function PATCH(
     .eq("id", id);
   if (updateError) {
     return NextResponse.json(
-      { error: `사진사 수정 실패: ${updateError.message}` },
+      { error: `작가 수정 실패: ${updateError.message}` },
       { status: 500 }
     );
   }
 
-  // 이름이 바뀌었을 수 있으니 이 사진사의 사진 표시용 이름도 갱신한다.
+  // 이름이 바뀌었을 수 있으니 이 작가의 사진 표시용 이름도 갱신한다.
   await supabase
     .from("photos")
     .update({ uploader: name })
@@ -116,8 +116,8 @@ export async function PATCH(
 }
 
 /**
- * 관리자 키를 검증한 뒤 사진사 프로필을 삭제한다.
- * 프로필 이미지 파일도 함께 삭제하며, 이 사진사가 올린 사진은
+ * 관리자 키를 검증한 뒤 작가 프로필을 삭제한다.
+ * 프로필 이미지 파일도 함께 삭제하며, 이 작가가 올린 사진은
  * FK(on delete set null)에 의해 연결만 해제되고 그대로 남는다.
  */
 export async function DELETE(
@@ -156,7 +156,7 @@ export async function DELETE(
 
   if (fetchError || !photographer) {
     return NextResponse.json(
-      { error: "사진사를 찾을 수 없습니다." },
+      { error: "작가를 찾을 수 없습니다." },
       { status: 404 }
     );
   }
@@ -175,7 +175,7 @@ export async function DELETE(
 
   if (deleteError) {
     return NextResponse.json(
-      { error: `사진사 삭제 실패: ${deleteError.message}` },
+      { error: `작가 삭제 실패: ${deleteError.message}` },
       { status: 500 }
     );
   }

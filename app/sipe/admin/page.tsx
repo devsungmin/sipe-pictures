@@ -13,8 +13,8 @@ const menus = [
   {
     href: "/sipe/admin/photographers",
     emoji: "👤",
-    title: "사진사 관리",
-    description: "사진사 프로필을 등록하고 삭제합니다.",
+    title: "작가 관리",
+    description: "작가 프로필을 등록하고 삭제합니다.",
   },
 ];
 

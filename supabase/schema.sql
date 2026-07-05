@@ -2,7 +2,7 @@
 -- Supabase 대시보드 > SQL Editor에서 전체를 실행하세요.
 -- (모든 문장이 멱등이라 기존 프로젝트에서 다시 실행해도 안전합니다)
 
--- 1) 사진사 프로필 테이블
+-- 1) 작가 프로필 테이블
 create table if not exists public.photographers (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -49,7 +49,7 @@ create table if not exists public.photos (
   created_at timestamptz not null default now()
 );
 
--- 사진사 연결 (사진사 삭제 시 사진은 남기고 연결만 해제)
+-- 작가 연결 (작가 삭제 시 사진은 남기고 연결만 해제)
 alter table public.photos
   add column if not exists photographer_id uuid references public.photographers (id) on delete set null;
 

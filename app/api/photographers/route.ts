@@ -11,7 +11,7 @@ interface CreatePhotographerBody {
   profileImagePath?: string;
 }
 
-/** 관리자 키를 검증한 뒤 사진사 프로필을 생성한다. */
+/** 관리자 키를 검증한 뒤 작가 프로필을 생성한다. */
 export async function POST(req: NextRequest) {
   let body: CreatePhotographerBody;
   try {
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
   if (error || !data) {
     return NextResponse.json(
-      { error: `사진사 등록 실패: ${error?.message ?? "unknown"}` },
+      { error: `작가 등록 실패: ${error?.message ?? "unknown"}` },
       { status: 500 }
     );
   }

@@ -48,7 +48,7 @@ export default async function PhotographerPage({
         ← 갤러리로 돌아가기
       </Link>
 
-      {/* 사진사 프로필 */}
+      {/* 작가 프로필 */}
       <ScrollReveal>
         <section className="flex flex-col items-center gap-5 rounded-2xl border border-white/10 bg-white/5 p-8 text-center sm:flex-row sm:text-left">
           {photographer.profile_image_path ? (
@@ -102,7 +102,7 @@ export default async function PhotographerPage({
         </section>
       </ScrollReveal>
 
-      {/* 사진사가 올린 사진 */}
+      {/* 작가가 올린 사진 */}
       <section>
         <h2 className="mb-4 text-lg font-semibold">올린 사진</h2>
         {photoList.length === 0 ? (
