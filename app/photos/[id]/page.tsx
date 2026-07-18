@@ -123,39 +123,44 @@ export default async function PhotoDetailPage({
             {photo.description}
           </p>
         )}
-        {photo.album && (
-          <Link
-            href={`/albums/${photo.album.id}`}
-            className="mr-2 mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-neutral-200 transition hover:border-white/30 hover:bg-white/10"
-          >
-            📔 {photo.album.name}
-          </Link>
-        )}
-        {photo.photographer ? (
-          <Link
-            href={`/photographers/${photo.photographer.id}`}
-            className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 py-1 pl-1 pr-3 text-sm text-neutral-200 transition hover:border-white/30 hover:bg-white/10"
-          >
-            {photo.photographer.profile_image_path ? (
-              // 프로필 사진은 원형으로 보여준다.
-              <img
-                src={photoPublicUrl(photo.photographer.profile_image_path)}
-                alt={photo.photographer.name}
-                className="h-7 w-7 rounded-full object-cover"
-              />
-            ) : (
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-sm">
-                📷
-              </span>
+        {(photo.album || photo.photographer || photo.uploader) && (
+          // 칩 높이(h-9)를 통일하고 flex로 묶어 나란히 정렬한다.
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {photo.album && (
+              <Link
+                href={`/albums/${photo.album.id}`}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 text-sm text-neutral-200 transition hover:border-white/30 hover:bg-white/10"
+              >
+                📔 {photo.album.name}
+              </Link>
             )}
-            {photo.photographer.name}
-          </Link>
-        ) : (
-          photo.uploader && (
-            <p className="mt-2 text-sm text-neutral-500">
-              올린 사람: {photo.uploader}
-            </p>
-          )
+            {photo.photographer ? (
+              <Link
+                href={`/photographers/${photo.photographer.id}`}
+                className="inline-flex h-9 items-center gap-2 rounded-full border border-white/15 bg-white/5 pl-1 pr-3 text-sm text-neutral-200 transition hover:border-white/30 hover:bg-white/10"
+              >
+                {photo.photographer.profile_image_path ? (
+                  // 프로필 사진은 원형으로 보여준다.
+                  <img
+                    src={photoPublicUrl(photo.photographer.profile_image_path)}
+                    alt={photo.photographer.name}
+                    className="h-7 w-7 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-sm">
+                    📷
+                  </span>
+                )}
+                {photo.photographer.name}
+              </Link>
+            ) : (
+              photo.uploader && (
+                <p className="text-sm text-neutral-500">
+                  올린 사람: {photo.uploader}
+                </p>
+              )
+            )}
+          </div>
         )}
       </div>
 
