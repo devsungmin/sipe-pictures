@@ -4,9 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { extractExif } from "@/lib/exif";
+import { createThumbnail } from "@/lib/image";
 import { getSupabaseAnon, PHOTOS_BUCKET } from "@/lib/supabase";
-import type { ExifData, Photographer } from "@/lib/types";
+import type { Album, ExifData, Photographer } from "@/lib/types";
 import LocationPicker, { type PickedLocation } from "./location-picker";
+
+/** "새 앨범 만들기"를 나타내는 select 값 */
+const NEW_ALBUM = "__new__";
 
 interface UploadItem {
   file: File;
@@ -52,11 +56,38 @@ async function toDisplayableFile(file: File): Promise<File> {
   }
 }
 
+/** 서명 URL을 발급받아 파일을 Storage에 직접 업로드하고 경로를 돌려준다. */
+async function uploadToStorage(
+  file: File,
+  adminKey: string,
+  kind?: "thumb"
+): Promise<string> {
+  const urlRes = await fetch("/api/upload-url", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ adminKey, contentType: file.type, kind }),
+  });
+  const urlJson = await urlRes.json();
+  if (!urlRes.ok) throw new Error(urlJson.error ?? "업로드 URL 발급 실패");
+
+  const supabase = getSupabaseAnon();
+  const { error: uploadError } = await supabase.storage
+    .from(PHOTOS_BUCKET)
+    .uploadToSignedUrl(urlJson.path, urlJson.token, file);
+  if (uploadError) throw new Error(`파일 업로드 실패: ${uploadError.message}`);
+  return urlJson.path;
+}
+
 async function uploadOne(
   file: File,
   exif: ExifData,
   adminKey: string,
-  fields: { title: string; description: string; photographerId: string },
+  fields: {
+    title: string;
+    description: string;
+    photographerId: string;
+    albumId: string;
+  },
   isSingle: boolean,
   onProgress: (state: "변환 중" | "업로드 중") => void
 ): Promise<void> {
@@ -65,19 +96,16 @@ async function uploadOne(
   const uploadFile = await toDisplayableFile(file);
   if (needsConvert) onProgress("업로드 중");
 
-  const urlRes = await fetch("/api/upload-url", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ adminKey, contentType: uploadFile.type }),
-  });
-  const urlJson = await urlRes.json();
-  if (!urlRes.ok) throw new Error(urlJson.error ?? "업로드 URL 발급 실패");
+  const storagePath = await uploadToStorage(uploadFile, adminKey);
 
-  const supabase = getSupabaseAnon();
-  const { error: uploadError } = await supabase.storage
-    .from(PHOTOS_BUCKET)
-    .uploadToSignedUrl(urlJson.path, urlJson.token, uploadFile);
-  if (uploadError) throw new Error(`파일 업로드 실패: ${uploadError.message}`);
+  // 목록용 썸네일 — 생성/업로드에 실패해도 원본 업로드는 계속 진행한다.
+  let thumbPath: string | undefined;
+  try {
+    const thumbFile = await createThumbnail(uploadFile);
+    thumbPath = await uploadToStorage(thumbFile, adminKey, "thumb");
+  } catch {
+    thumbPath = undefined;
+  }
 
   const title = isSingle
     ? fields.title || file.name.replace(/\.[^.]+$/, "")
@@ -88,10 +116,12 @@ async function uploadOne(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       adminKey,
-      storagePath: urlJson.path,
+      storagePath,
+      thumbPath,
       title,
       description: fields.description,
       photographerId: fields.photographerId || undefined,
+      albumId: fields.albumId || undefined,
       exif,
     }),
   });
@@ -164,6 +194,11 @@ export default function UploadPage() {
   const [adminKey, setAdminKey] = useState<string | null>(null);
   const [photographers, setPhotographers] = useState<Photographer[]>([]);
   const [photographerId, setPhotographerId] = useState("");
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const [albumSelect, setAlbumSelect] = useState("");
+  const [newAlbumName, setNewAlbumName] = useState("");
+  const [newAlbumDate, setNewAlbumDate] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [items, setItems] = useState<UploadItem[]>([]);
@@ -196,13 +231,18 @@ export default function UploadPage() {
     setAdminKey(key);
     try {
       const supabase = getSupabaseAnon();
-      const { data } = await supabase
-        .from("photographers")
-        .select("*")
-        .order("name");
-      setPhotographers(data ?? []);
+      const [photographersRes, albumsRes] = await Promise.all([
+        supabase.from("photographers").select("*").order("name"),
+        supabase
+          .from("albums")
+          .select("*")
+          .order("event_date", { ascending: false, nullsFirst: false }),
+      ]);
+      setPhotographers(photographersRes.data ?? []);
+      setAlbums(albumsRes.data ?? []);
     } catch {
       setPhotographers([]);
+      setAlbums([]);
     }
   };
 
@@ -216,6 +256,36 @@ export default function UploadPage() {
     if (items.length === 0 || busy) return;
 
     setBusy(true);
+    setFormError(null);
+
+    // "새 앨범 만들기"를 선택했으면 앨범을 먼저 생성한다.
+    let albumId = albumSelect === NEW_ALBUM ? "" : albumSelect;
+    if (albumSelect === NEW_ALBUM) {
+      if (!newAlbumName.trim()) {
+        setFormError("새 앨범 이름을 입력해 주세요.");
+        setBusy(false);
+        return;
+      }
+      try {
+        const res = await fetch("/api/albums", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            adminKey,
+            name: newAlbumName,
+            eventDate: newAlbumDate || undefined,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? "앨범 생성 실패");
+        albumId = json.id;
+      } catch (err) {
+        setFormError(err instanceof Error ? err.message : String(err));
+        setBusy(false);
+        return;
+      }
+    }
+
     const next: FileStatus[] = items.map(({ file }) => ({
       name: file.name,
       state: "대기",
@@ -241,7 +311,7 @@ export default function UploadPage() {
           file,
           effectiveExif,
           adminKey,
-          { title, description, photographerId },
+          { title, description, photographerId, albumId },
           items.length === 1,
           (state) => {
             next[i] = { ...next[i], state };
@@ -352,6 +422,42 @@ export default function UploadPage() {
           )}
         </div>
 
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            앨범 <span className="text-neutral-500">(선택)</span>
+          </label>
+          <select
+            value={albumSelect}
+            onChange={(e) => setAlbumSelect(e.target.value)}
+            className={`${inputCls} [&>option]:bg-neutral-900`}
+          >
+            <option value="">앨범 없음</option>
+            {albums.map((album) => (
+              <option key={album.id} value={album.id}>
+                {album.name}
+                {album.event_date ? ` (${album.event_date})` : ""}
+              </option>
+            ))}
+            <option value={NEW_ALBUM}>➕ 새 앨범 만들기</option>
+          </select>
+          {albumSelect === NEW_ALBUM && (
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <input
+                value={newAlbumName}
+                onChange={(e) => setNewAlbumName(e.target.value)}
+                placeholder="앨범 이름 (예: 5월 성수동 출사)"
+                className={inputCls}
+              />
+              <input
+                type="date"
+                value={newAlbumDate}
+                onChange={(e) => setNewAlbumDate(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+          )}
+        </div>
+
         {items.length <= 1 && (
           <div>
             <label className="mb-1.5 block text-sm font-medium">제목</label>
@@ -374,6 +480,8 @@ export default function UploadPage() {
             className={inputCls}
           />
         </div>
+
+        {formError && <p className="text-sm text-red-400">{formError}</p>}
 
         <button
           type="submit"

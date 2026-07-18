@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AdminGate from "../admin-gate";
-import { getSupabaseAnon, photoPublicUrl } from "@/lib/supabase";
+import { getSupabaseAnon, photoThumbUrl } from "@/lib/supabase";
 import { cameraLabel, formatTakenAt } from "@/lib/format";
-import type { Photo, Photographer } from "@/lib/types";
+import type { Album, Photo, Photographer } from "@/lib/types";
 import LocationPicker, {
   type PickedLocation,
 } from "@/app/upload/location-picker";
@@ -18,6 +18,7 @@ function PhotoEditForm({
   adminKey,
   photo,
   photographers,
+  albums,
   onSaved,
   onCancel,
   onError,
@@ -25,6 +26,7 @@ function PhotoEditForm({
   adminKey: string;
   photo: Photo;
   photographers: Photographer[];
+  albums: Album[];
   onSaved: () => Promise<void>;
   onCancel: () => void;
   onError: (message: string | null) => void;
@@ -34,6 +36,7 @@ function PhotoEditForm({
   const [photographerId, setPhotographerId] = useState(
     photo.photographer_id ?? ""
   );
+  const [albumId, setAlbumId] = useState(photo.album_id ?? "");
   const [location, setLocation] = useState<PickedLocation | null>(
     photo.latitude != null && photo.longitude != null
       ? { lat: photo.latitude, lng: photo.longitude }
@@ -55,6 +58,7 @@ function PhotoEditForm({
           title,
           description,
           photographerId: photographerId || null,
+          albumId: albumId || null,
           latitude: location?.lat ?? null,
           longitude: location?.lng ?? null,
         }),
@@ -94,6 +98,19 @@ function PhotoEditForm({
           <option key={p.id} value={p.id}>
             {p.name}
             {p.nickname ? ` (${p.nickname})` : ""}
+          </option>
+        ))}
+      </select>
+      <select
+        value={albumId}
+        onChange={(e) => setAlbumId(e.target.value)}
+        className={`${inputCls} [&>option]:bg-neutral-900`}
+      >
+        <option value="">앨범 없음</option>
+        {albums.map((album) => (
+          <option key={album.id} value={album.id}>
+            {album.name}
+            {album.event_date ? ` (${album.event_date})` : ""}
           </option>
         ))}
       </select>
@@ -138,6 +155,7 @@ function PhotoEditForm({
 function PhotoManager({ adminKey }: { adminKey: string }) {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [photographers, setPhotographers] = useState<Photographer[]>([]);
+  const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -156,19 +174,25 @@ function PhotoManager({ adminKey }: { adminKey: string }) {
     setError(null);
     try {
       const supabase = getSupabaseAnon();
-      const [photosRes, photographersRes] = await Promise.all([
+      const [photosRes, photographersRes, albumsRes] = await Promise.all([
         supabase
           .from("photos")
           .select("*")
           .order("created_at", { ascending: false }),
         supabase.from("photographers").select("*").order("name"),
+        supabase
+          .from("albums")
+          .select("*")
+          .order("event_date", { ascending: false, nullsFirst: false }),
       ]);
       if (photosRes.error) throw new Error(photosRes.error.message);
       if (photographersRes.error) {
         throw new Error(photographersRes.error.message);
       }
+      if (albumsRes.error) throw new Error(albumsRes.error.message);
       setPhotos(photosRes.data ?? []);
       setPhotographers(photographersRes.data ?? []);
+      setAlbums(albumsRes.data ?? []);
     } catch (e) {
       setError(
         `목록을 불러오지 못했습니다: ${e instanceof Error ? e.message : String(e)}`
@@ -282,7 +306,7 @@ function PhotoManager({ adminKey }: { adminKey: string }) {
                 <div className="flex items-center gap-4">
                   {/* Vercel 이미지 최적화 무료 한도를 아끼기 위해 next/image 대신 img 사용 */}
                   <img
-                    src={photoPublicUrl(photo.storage_path)}
+                    src={photoThumbUrl(photo)}
                     alt={photo.title ?? "SIPE 출사 사진"}
                     loading="lazy"
                     className="h-20 w-20 shrink-0 rounded-lg object-cover"
@@ -324,6 +348,7 @@ function PhotoManager({ adminKey }: { adminKey: string }) {
                     adminKey={adminKey}
                     photo={photo}
                     photographers={photographers}
+                    albums={albums}
                     onSaved={async () => {
                       setEditingId(null);
                       await load();

@@ -38,3 +38,11 @@ export function photoPublicUrl(storagePath: string): string {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   return `${url}/storage/v1/object/public/${PHOTOS_BUCKET}/${storagePath}`;
 }
+
+/** 목록 표시용 썸네일 URL — 썸네일이 없는 옛 사진은 원본으로 대체한다. */
+export function photoThumbUrl(photo: {
+  storage_path: string;
+  thumb_path: string | null;
+}): string {
+  return photoPublicUrl(photo.thumb_path ?? photo.storage_path);
+}

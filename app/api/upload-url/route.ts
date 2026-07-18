@@ -42,11 +42,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 작가 프로필 이미지는 profiles/ 아래에, 출사 사진은 날짜 폴더 아래에 저장한다.
+  // 용도별 저장 경로: 작가 프로필은 profiles/, 목록용 썸네일은 thumbs/,
+  // 출사 사진 원본은 날짜 폴더 아래에 저장한다.
   const prefix =
     body.kind === "profile"
       ? "profiles"
-      : new Date().toISOString().slice(0, 10);
+      : body.kind === "thumb"
+        ? "thumbs"
+        : new Date().toISOString().slice(0, 10);
   const path = `${prefix}/${crypto.randomUUID()}.${ext}`;
 
   const supabase = getSupabaseAdmin();

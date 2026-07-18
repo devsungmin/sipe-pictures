@@ -3,8 +3,16 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SIPE Pictures",
+  title: {
+    default: "SIPE Pictures",
+    template: "%s | SIPE Pictures",
+  },
   description: "SIPE 출사 모임의 사진을 공유하는 갤러리",
+  openGraph: {
+    siteName: "SIPE Pictures",
+    type: "website",
+    locale: "ko_KR",
+  },
 };
 
 export default function RootLayout({
@@ -29,6 +37,9 @@ export default function RootLayout({
               </Link>
               <Link href="/photographers" className="hover:text-white">
                 작가
+              </Link>
+              <Link href="/albums" className="hover:text-white">
+                앨범
               </Link>
               <Link
                 href="/upload"

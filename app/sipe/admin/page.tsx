@@ -16,6 +16,12 @@ const menus = [
     title: "작가 관리",
     description: "작가 프로필을 등록하고 삭제합니다.",
   },
+  {
+    href: "/sipe/admin/albums",
+    emoji: "📔",
+    title: "앨범 관리",
+    description: "출사 앨범을 만들고 수정·삭제합니다.",
+  },
 ];
 
 export default function AdminHubPage() {

@@ -6,11 +6,12 @@ interface UpdatePhotoBody {
   title?: string;
   description?: string;
   photographerId?: string | null;
+  albumId?: string | null;
   latitude?: number | null;
   longitude?: number | null;
 }
 
-/** 관리자 키를 검증한 뒤 사진 정보(제목, 설명, 작가)를 수정한다. */
+/** 관리자 키를 검증한 뒤 사진 정보(제목, 설명, 작가, 앨범, 위치)를 수정한다. */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -56,6 +57,21 @@ export async function PATCH(
     photographerName = photographer.name;
   }
 
+  // 앨범이 지정됐으면 존재 여부를 확인한다.
+  if (body.albumId) {
+    const { data: album } = await supabase
+      .from("albums")
+      .select("id")
+      .eq("id", body.albumId)
+      .maybeSingle();
+    if (!album) {
+      return NextResponse.json(
+        { error: "존재하지 않는 앨범입니다." },
+        { status: 400 }
+      );
+    }
+  }
+
   // 위치는 위도/경도가 함께 유효한 숫자일 때만 저장하고, 아니면 제거한다.
   const { latitude, longitude } = body;
   const hasLocation =
@@ -78,6 +94,7 @@ export async function PATCH(
       title: body.title?.trim() || null,
       description: body.description?.trim() || null,
       photographer_id: body.photographerId || null,
+      album_id: body.albumId || null,
       uploader: photographerName,
       latitude: hasLocation ? latitude : null,
       longitude: hasLocation ? longitude : null,
@@ -133,7 +150,7 @@ export async function DELETE(
 
   const { data: photo, error: fetchError } = await supabase
     .from("photos")
-    .select("storage_path")
+    .select("storage_path, thumb_path")
     .eq("id", id)
     .maybeSingle();
 
@@ -144,9 +161,11 @@ export async function DELETE(
     );
   }
 
+  const pathsToRemove = [photo.storage_path];
+  if (photo.thumb_path) pathsToRemove.push(photo.thumb_path);
   const { error: storageError } = await supabase.storage
     .from(PHOTOS_BUCKET)
-    .remove([photo.storage_path]);
+    .remove(pathsToRemove);
   if (storageError) {
     return NextResponse.json(
       { error: `파일 삭제 실패: ${storageError.message}` },

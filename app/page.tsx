@@ -3,6 +3,7 @@ import {
   getSupabaseAnon,
   isSupabaseConfigured,
   photoPublicUrl,
+  photoThumbUrl,
 } from "@/lib/supabase";
 import { cameraLabel, formatTakenAt } from "@/lib/format";
 import type { PhotoWithPhotographer } from "@/lib/types";
@@ -90,7 +91,7 @@ function PhotoCard({
         <div className="aspect-[4/3] overflow-hidden">
           {/* Vercel 이미지 최적화 무료 한도를 아끼기 위해 next/image 대신 img 사용 */}
           <img
-            src={photoPublicUrl(photo.storage_path)}
+            src={photoThumbUrl(photo)}
             alt={photo.title ?? "SIPE 출사 사진"}
             loading="lazy"
             className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"

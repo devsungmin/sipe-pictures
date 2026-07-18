@@ -1,15 +1,48 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import {
   getSupabaseAnon,
   isSupabaseConfigured,
   photoPublicUrl,
+  photoThumbUrl,
 } from "@/lib/supabase";
 import { cameraLabel, formatTakenAt } from "@/lib/format";
 import type { Photo, Photographer } from "@/lib/types";
 import ScrollReveal from "@/app/scroll-reveal";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  if (!isSupabaseConfigured()) return {};
+  const { id } = await params;
+  const supabase = getSupabaseAnon();
+  const { data: photographer } = (await supabase
+    .from("photographers")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle()) as { data: Photographer | null };
+  if (!photographer) return {};
+
+  const title = `${photographer.name} 작가`;
+  const description =
+    photographer.skills ?? "SIPE 출사 모임에서 활동 중인 작가";
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      ...(photographer.profile_image_path
+        ? { images: [{ url: photoPublicUrl(photographer.profile_image_path) }] }
+        : {}),
+    },
+  };
+}
 
 export default async function PhotographerPage({
   params,
@@ -123,7 +156,7 @@ export default async function PhotographerPage({
                     <div className="aspect-[4/3] overflow-hidden">
                       {/* Vercel 이미지 최적화 무료 한도를 아끼기 위해 next/image 대신 img 사용 */}
                       <img
-                        src={photoPublicUrl(photo.storage_path)}
+                        src={photoThumbUrl(photo)}
                         alt={photo.title ?? "SIPE 출사 사진"}
                         loading="lazy"
                         className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"

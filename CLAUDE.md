@@ -8,6 +8,9 @@
 - 지도 탭(`/map`)에서 위치 정보가 있는 모든 사진을 사진 썸네일 마커로 모아 볼 수 있다 (Leaflet + OpenStreetMap). 같은 위치의 사진은 랜덤 대표 1장 + 장수 배지로 묶이고, 마커가 많아지면 leaflet.markercluster로 클러스터링된다.
 - 로그인 없이 관리자 키(`ADMIN_UPLOAD_KEY`) 입력만으로 SIPE 회원이 사진을 업로드할 수 있다. 업로드는 키 인증 → 업로드 폼의 2단계로 진행된다.
 - 작가 프로필(원형 프로필 이미지 — 등록 시 영역 크롭, 이름, 닉네임, 주요 기술, SNS 링크, 이메일)을 관리자 페이지에서 등록/수정/삭제하고, 업로드 시 작가를 선택해 연결한다. 작가 목록(`/photographers`)과 프로필 페이지(`/photographers/[id]`)에서 작가 정보와 그가 올린 사진을 보여준다.
+- 출사 앨범(이름, 날짜, 설명)으로 사진을 모임 단위로 묶는다. 업로드 시 앨범을 선택하거나 새로 만들 수 있고, 앨범 목록(`/albums`)과 앨범 페이지(`/albums/[id]`)에서 모아 본다.
+- 업로드 시 브라우저에서 목록용 JPEG 썸네일(장변 800px)을 함께 생성해 저장한다. 갤러리·지도·앨범 등 목록 화면은 썸네일을, 상세 페이지는 원본을 사용한다 (썸네일이 없는 옛 사진은 원본으로 대체).
+- 사진 상세·작가·앨범 페이지에 OG 메타태그를 넣어 카톡/슬랙 링크 공유 시 미리보기가 보인다.
 
 ## 기술 스택
 
@@ -32,22 +35,28 @@ app/
   map/photo-map.tsx        Leaflet 지도 렌더링 (클라이언트 컴포넌트)
   photographers/page.tsx   작가 목록 페이지
   photographers/[id]/page.tsx 작가 프로필 + 올린 사진 목록
+  albums/page.tsx          앨범 목록 페이지 (커버 이미지 + 사진 수)
+  albums/[id]/page.tsx     앨범 상세 — 앨범 정보 + 사진 그리드
   upload/page.tsx          업로드 페이지 — 키 인증 후 업로드 폼 (2단계)
   sipe/admin/page.tsx      관리자 허브 — 관리 항목 선택
   sipe/admin/admin-gate.tsx 관리자 공용 인증 게이트 (sessionStorage로 키 유지)
-  sipe/admin/photos/page.tsx 사진 관리 — 목록/수정/삭제
+  sipe/admin/photos/page.tsx 사진 관리 — 목록/수정/삭제, 작가 필터
   sipe/admin/photographers/page.tsx 작가 관리 — 등록(크롭)/수정/삭제
-  api/upload-url/route.ts  관리자 키 검증 후 Storage 서명 업로드 URL 발급 (kind=profile이면 프로필 이미지 경로)
+  sipe/admin/albums/page.tsx 앨범 관리 — 생성/수정/삭제
+  api/upload-url/route.ts  관리자 키 검증 후 Storage 서명 업로드 URL 발급 (kind: profile/thumb 별 경로)
   api/photos/route.ts      업로드 완료 후 사진 메타데이터 레코드 생성
-  api/photos/[id]/route.ts 관리자 키 검증 후 사진 수정(PATCH)/삭제(DELETE)
+  api/photos/[id]/route.ts 관리자 키 검증 후 사진 수정(PATCH)/삭제(DELETE, 썸네일 포함)
   api/photographers/route.ts 관리자 키 검증 후 작가 등록
   api/photographers/[id]/route.ts 관리자 키 검증 후 작가 수정(PATCH)/삭제(DELETE, 사진은 연결만 해제)
+  api/albums/route.ts      관리자 키 검증 후 앨범 생성
+  api/albums/[id]/route.ts 관리자 키 검증 후 앨범 수정(PATCH)/삭제(DELETE, 사진은 연결만 해제)
   api/admin/verify/route.ts 관리자/업로드 페이지 진입용 키 검증
 lib/
-  supabase.ts              anon/admin 클라이언트, public URL 헬퍼
+  supabase.ts              anon/admin 클라이언트, public URL·썸네일 URL 헬퍼
   exif.ts                  브라우저 EXIF 추출 (exifr)
+  image.ts                 브라우저 썸네일 생성 (canvas)
   format.ts                촬영 정보 표시 포맷 유틸
-  types.ts                 공용 타입 (Photo, ExifData)
+  types.ts                 공용 타입 (Photo, Photographer, Album, ExifData)
 supabase/schema.sql        DB 테이블 + RLS 정책 + Storage 버킷 정의
 ```
 

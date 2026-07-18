@@ -1,7 +1,7 @@
 import {
   getSupabaseAnon,
   isSupabaseConfigured,
-  photoPublicUrl,
+  photoThumbUrl,
 } from "@/lib/supabase";
 import PhotoMap, { type MapPhoto } from "./photo-map";
 
@@ -11,6 +11,7 @@ interface PhotoRow {
   id: string;
   title: string | null;
   storage_path: string;
+  thumb_path: string | null;
   latitude: number;
   longitude: number;
 }
@@ -19,7 +20,7 @@ async function fetchPhotosWithLocation(): Promise<MapPhoto[]> {
   const supabase = getSupabaseAnon();
   const { data, error } = await supabase
     .from("photos")
-    .select("id, title, storage_path, latitude, longitude")
+    .select("id, title, storage_path, thumb_path, latitude, longitude")
     .not("latitude", "is", null)
     .not("longitude", "is", null)
     .order("created_at", { ascending: false })
@@ -28,7 +29,7 @@ async function fetchPhotosWithLocation(): Promise<MapPhoto[]> {
   return ((data ?? []) as PhotoRow[]).map((row) => ({
     id: row.id,
     title: row.title,
-    imageUrl: photoPublicUrl(row.storage_path),
+    imageUrl: photoThumbUrl(row),
     latitude: row.latitude,
     longitude: row.longitude,
   }));

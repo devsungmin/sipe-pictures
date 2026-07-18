@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import {
   getSupabaseAnon,
   isSupabaseConfigured,
   photoPublicUrl,
+  photoThumbUrl,
 } from "@/lib/supabase";
 import {
   cameraLabel,
@@ -13,9 +15,54 @@ import {
   formatIso,
   formatTakenAt,
 } from "@/lib/format";
-import type { PhotoWithPhotographer } from "@/lib/types";
+import type { Album, PhotoWithPhotographer } from "@/lib/types";
+
+type PhotoDetail = PhotoWithPhotographer & { album: Album | null };
 
 export const dynamic = "force-dynamic";
+
+/** 카톡/슬랙 등에서 링크 공유 시 사진 미리보기가 보이도록 OG 태그를 생성한다. */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  if (!isSupabaseConfigured()) return {};
+  const { id } = await params;
+  const supabase = getSupabaseAnon();
+  const { data: photo } = (await supabase
+    .from("photos")
+    .select("*, photographer:photographers(*)")
+    .eq("id", id)
+    .maybeSingle()) as { data: PhotoWithPhotographer | null };
+  if (!photo) return {};
+
+  const title = photo.title ?? "SIPE 출사 사진";
+  const photographerName = photo.photographer?.name ?? photo.uploader;
+  const description =
+    photo.description ??
+    (photographerName
+      ? `${photographerName} 작가의 출사 사진`
+      : "SIPE 출사 모임의 사진");
+  // og:image는 로딩이 빠른 썸네일(장변 800px)을 우선 사용한다.
+  const imageUrl = photoThumbUrl(photo);
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [{ url: imageUrl }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [imageUrl],
+    },
+  };
+}
 
 function MetaItem({ label, value }: { label: string; value: string | null }) {
   if (!value) return null;
@@ -38,9 +85,9 @@ export default async function PhotoDetailPage({
   const supabase = getSupabaseAnon();
   const { data: photo } = (await supabase
     .from("photos")
-    .select("*, photographer:photographers(*)")
+    .select("*, photographer:photographers(*), album:albums(*)")
     .eq("id", id)
-    .maybeSingle()) as { data: PhotoWithPhotographer | null };
+    .maybeSingle()) as { data: PhotoDetail | null };
 
   if (!photo) notFound();
 
@@ -75,6 +122,14 @@ export default async function PhotoDetailPage({
           <p className="mt-2 whitespace-pre-wrap text-neutral-300">
             {photo.description}
           </p>
+        )}
+        {photo.album && (
+          <Link
+            href={`/albums/${photo.album.id}`}
+            className="mr-2 mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-neutral-200 transition hover:border-white/30 hover:bg-white/10"
+          >
+            📔 {photo.album.name}
+          </Link>
         )}
         {photo.photographer ? (
           <Link

@@ -5,9 +5,11 @@ import type { ExifData } from "@/lib/types";
 interface CreatePhotoBody {
   adminKey?: string;
   storagePath?: string;
+  thumbPath?: string;
   title?: string;
   description?: string;
   photographerId?: string;
+  albumId?: string;
   exif?: Partial<ExifData>;
 }
 
@@ -72,6 +74,21 @@ export async function POST(req: NextRequest) {
     photographerName = photographer.name;
   }
 
+  // 앨범이 지정됐으면 실제 존재하는지 확인한다.
+  if (body.albumId) {
+    const { data: album } = await supabase
+      .from("albums")
+      .select("id")
+      .eq("id", body.albumId)
+      .maybeSingle();
+    if (!album) {
+      return NextResponse.json(
+        { error: "존재하지 않는 앨범입니다." },
+        { status: 400 }
+      );
+    }
+  }
+
   const exif = body.exif ?? {};
   const { data, error } = await supabase
     .from("photos")
@@ -79,8 +96,10 @@ export async function POST(req: NextRequest) {
       title: body.title?.trim() || null,
       description: body.description?.trim() || null,
       photographer_id: body.photographerId || null,
+      album_id: body.albumId || null,
       uploader: photographerName,
       storage_path: body.storagePath,
+      thumb_path: body.thumbPath || null,
       taken_at: exif.taken_at ?? null,
       camera_make: exif.camera_make ?? null,
       camera_model: exif.camera_model ?? null,

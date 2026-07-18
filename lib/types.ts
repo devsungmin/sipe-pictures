@@ -9,13 +9,23 @@ export interface Photographer {
   created_at: string;
 }
 
+export interface Album {
+  id: string;
+  name: string;
+  description: string | null;
+  event_date: string | null;
+  created_at: string;
+}
+
 export interface Photo {
   id: string;
   title: string | null;
   description: string | null;
   uploader: string | null;
   photographer_id: string | null;
+  album_id: string | null;
   storage_path: string;
+  thumb_path: string | null;
   taken_at: string | null;
   camera_make: string | null;
   camera_model: string | null;
