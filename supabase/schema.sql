@@ -86,7 +86,41 @@ create policy "public read"
   on public.photos for select
   using (true);
 
--- 5) Storage 버킷: 공개 읽기 (쓰기는 서버가 발급한 서명 URL로만)
+-- 5) 사진 이모지 반응 (익명 카운트)
+create table if not exists public.photo_reactions (
+  photo_id uuid not null references public.photos (id) on delete cascade,
+  emoji text not null,
+  count integer not null default 0,
+  primary key (photo_id, emoji)
+);
+
+alter table public.photo_reactions enable row level security;
+
+drop policy if exists "public read" on public.photo_reactions;
+create policy "public read"
+  on public.photo_reactions for select
+  using (true);
+
+-- 반응 카운트를 원자적으로 증감한다 (0 아래로는 내려가지 않음).
+-- 쓰기는 service role을 쓰는 서버 API에서만 호출한다.
+create or replace function public.adjust_reaction(
+  p_photo_id uuid,
+  p_emoji text,
+  p_delta integer
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.photo_reactions (photo_id, emoji, count)
+  values (p_photo_id, p_emoji, greatest(p_delta, 0))
+  on conflict (photo_id, emoji)
+  do update set count = greatest(public.photo_reactions.count + p_delta, 0);
+end;
+$$;
+
+-- 6) Storage 버킷: 공개 읽기 (쓰기는 서버가 발급한 서명 URL로만)
 insert into storage.buckets (id, name, public)
 values ('photos', 'photos', true)
 on conflict (id) do nothing;

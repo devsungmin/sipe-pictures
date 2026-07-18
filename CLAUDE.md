@@ -11,6 +11,8 @@
 - 출사 앨범(이름, 날짜, 설명)으로 사진을 모임 단위로 묶는다. 업로드 시 앨범을 선택하거나 새로 만들 수 있고, 앨범 목록(`/albums`)과 앨범 페이지(`/albums/[id]`)에서 모아 본다.
 - 업로드 시 브라우저에서 목록용 JPEG 썸네일(장변 800px)을 함께 생성해 저장한다. 갤러리·지도·앨범 등 목록 화면은 썸네일을, 상세 페이지는 원본을 사용한다 (썸네일이 없는 옛 사진은 원본으로 대체).
 - 사진 상세·작가·앨범 페이지에 OG 메타태그를 넣어 카톡/슬랙 링크 공유 시 미리보기가 보인다.
+- 사진 상세에서 로그인 없이 이모지 반응(❤️👍😍🔥)을 남길 수 있다. 익명 카운트 방식이며 중복 방지는 브라우저(localStorage) 수준이다.
+- 관리자 허브에서 Storage 사용량(1GB 한도 대비)을 확인하고, DB가 참조하지 않는 고아 파일(업로드 중단 잔여물)을 정리할 수 있다. 최근 1시간 내 파일은 업로드 진행 중일 수 있어 정리 대상에서 제외한다.
 
 ## 기술 스택
 
@@ -50,11 +52,14 @@ app/
   api/photographers/[id]/route.ts 관리자 키 검증 후 작가 수정(PATCH)/삭제(DELETE, 사진은 연결만 해제)
   api/albums/route.ts      관리자 키 검증 후 앨범 생성
   api/albums/[id]/route.ts 관리자 키 검증 후 앨범 수정(PATCH)/삭제(DELETE, 사진은 연결만 해제)
+  api/photos/[id]/reactions/route.ts 익명 이모지 반응 증감 (키 불필요, 이모지·delta 엄격 검증)
   api/admin/verify/route.ts 관리자/업로드 페이지 진입용 키 검증
+  api/admin/storage/route.ts 관리자 키 검증 후 Storage 사용량 조회/고아 파일 정리
 lib/
   supabase.ts              anon/admin 클라이언트, public URL·썸네일 URL 헬퍼
   exif.ts                  브라우저 EXIF 추출 (exifr)
   image.ts                 브라우저 썸네일 생성 (canvas)
+  reactions.ts             반응 이모지 목록 (서버 검증·UI 공용)
   format.ts                촬영 정보 표시 포맷 유틸
   types.ts                 공용 타입 (Photo, Photographer, Album, ExifData)
 supabase/schema.sql        DB 테이블 + RLS 정책 + Storage 버킷 정의

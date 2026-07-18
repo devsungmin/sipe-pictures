@@ -16,6 +16,7 @@ import {
   formatTakenAt,
 } from "@/lib/format";
 import type { Album, PhotoWithPhotographer } from "@/lib/types";
+import ReactionBar from "./reaction-bar";
 
 type PhotoDetail = PhotoWithPhotographer & { album: Album | null };
 
@@ -91,6 +92,14 @@ export default async function PhotoDetailPage({
 
   if (!photo) notFound();
 
+  const { data: reactions } = await supabase
+    .from("photo_reactions")
+    .select("emoji, count")
+    .eq("photo_id", id);
+  const reactionCounts = Object.fromEntries(
+    (reactions ?? []).map((row) => [row.emoji, row.count])
+  );
+
   const hasLocation = photo.latitude != null && photo.longitude != null;
   const settings = [
     formatFocalLength(photo.focal_length),
@@ -162,6 +171,9 @@ export default async function PhotoDetailPage({
             )}
           </div>
         )}
+        <div className="mt-4">
+          <ReactionBar photoId={photo.id} initialCounts={reactionCounts} />
+        </div>
       </div>
 
       <section>
