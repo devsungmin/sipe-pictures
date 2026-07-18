@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import {
   getSupabaseAnon,
   isSupabaseConfigured,
+  photoPublicUrl,
   photoThumbUrl,
 } from "@/lib/supabase";
 import { cameraLabel, formatTakenAt } from "@/lib/format";
@@ -126,7 +127,22 @@ export default async function AlbumDetailPage({
                         {photo.title ?? "무제"}
                       </p>
                       {photographerName && (
-                        <span className="shrink-0 text-xs text-neutral-300">
+                        <span className="flex shrink-0 items-center gap-1.5 text-xs text-neutral-300">
+                          {photo.photographer?.profile_image_path ? (
+                            // 프로필 사진은 원형으로 보여준다.
+                            <img
+                              src={photoPublicUrl(
+                                photo.photographer.profile_image_path
+                              )}
+                              alt={photographerName}
+                              loading="lazy"
+                              className="h-5 w-5 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[10px]">
+                              📷
+                            </span>
+                          )}
                           {photographerName}
                         </span>
                       )}
