@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { inputCls } from "@/components/ui";
 
 const STORAGE_KEY = "sipe-admin-key";
-const inputCls =
-  "w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-neutral-500 focus:border-white/40";
-
 async function verifyKey(key: string): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetch("/api/admin/verify", {

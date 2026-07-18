@@ -33,6 +33,18 @@ export function formatTakenAt(takenAt: string | null): string | null {
   });
 }
 
+/** 앨범 행사일(YYYY-MM-DD)을 한국어 날짜로 표시한다. */
+export function formatEventDate(date: string | null): string | null {
+  if (!date) return null;
+  const parsed = new Date(`${date}T00:00:00+09:00`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return parsed.toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 export function cameraLabel(
   make: string | null,
   model: string | null

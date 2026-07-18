@@ -5,9 +5,7 @@ import Link from "next/link";
 import AdminGate from "../admin-gate";
 import { getSupabaseAnon } from "@/lib/supabase";
 import type { Album } from "@/lib/types";
-
-const inputCls =
-  "w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-neutral-500 focus:border-white/40";
+import { inputCls } from "@/components/ui";
 
 type AlbumWithCount = Album & { photos: { count: number }[] };
 

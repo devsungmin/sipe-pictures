@@ -9,9 +9,7 @@ import type { Album, Photo, Photographer } from "@/lib/types";
 import LocationPicker, {
   type PickedLocation,
 } from "@/app/upload/location-picker";
-
-const inputCls =
-  "w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-neutral-500 focus:border-white/40";
+import { inputCls } from "@/components/ui";
 
 /** 사진 한 장의 인라인 수정 폼 */
 function PhotoEditForm({

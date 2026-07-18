@@ -16,6 +16,7 @@ import {
   formatTakenAt,
 } from "@/lib/format";
 import type { Album, PhotoWithPhotographer } from "@/lib/types";
+import Avatar from "@/components/avatar";
 import ReactionBar from "./reaction-bar";
 
 type PhotoDetail = PhotoWithPhotographer & { album: Album | null };
@@ -148,18 +149,11 @@ export default async function PhotoDetailPage({
                 href={`/photographers/${photo.photographer.id}`}
                 className="inline-flex h-9 items-center gap-2 rounded-full border border-white/15 bg-white/5 pl-1 pr-3 text-sm text-neutral-200 transition hover:border-white/30 hover:bg-white/10"
               >
-                {photo.photographer.profile_image_path ? (
-                  // 프로필 사진은 원형으로 보여준다.
-                  <img
-                    src={photoPublicUrl(photo.photographer.profile_image_path)}
-                    alt={photo.photographer.name}
-                    className="h-7 w-7 rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-sm">
-                    📷
-                  </span>
-                )}
+                <Avatar
+                  imagePath={photo.photographer.profile_image_path}
+                  alt={photo.photographer.name}
+                  className="h-7 w-7"
+                />
                 {photo.photographer.name}
               </Link>
             ) : (

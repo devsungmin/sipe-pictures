@@ -8,6 +8,7 @@ import { createThumbnail } from "@/lib/image";
 import { getSupabaseAnon, PHOTOS_BUCKET } from "@/lib/supabase";
 import type { Album, ExifData, Photographer } from "@/lib/types";
 import LocationPicker, { type PickedLocation } from "./location-picker";
+import { inputCls } from "@/components/ui";
 
 /** "새 앨범 만들기"를 나타내는 select 값 */
 const NEW_ALBUM = "__new__";
@@ -22,9 +23,6 @@ type FileStatus = {
   state: "대기" | "변환 중" | "업로드 중" | "완료" | "실패";
   error?: string;
 };
-
-const inputCls =
-  "w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-neutral-500 focus:border-white/40";
 
 function isHeic(file: File): boolean {
   // 브라우저에 따라 .heic 파일의 MIME 타입이 비어 있을 수 있어 확장자도 확인한다.

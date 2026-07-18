@@ -4,8 +4,10 @@ import {
   isSupabaseConfigured,
   photoThumbUrl,
 } from "@/lib/supabase";
+import { formatEventDate } from "@/lib/format";
 import type { Album } from "@/lib/types";
-import ScrollReveal from "@/app/scroll-reveal";
+import ScrollReveal from "@/components/scroll-reveal";
+import { SetupNotice, ErrorNotice, EmptyState } from "@/components/notice";
 
 export const dynamic = "force-dynamic";
 
@@ -54,24 +56,9 @@ async function fetchAlbums(): Promise<AlbumListItem[]> {
   }));
 }
 
-function formatEventDate(date: string | null): string | null {
-  if (!date) return null;
-  const parsed = new Date(`${date}T00:00:00+09:00`);
-  if (Number.isNaN(parsed.getTime())) return date;
-  return parsed.toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
 export default async function AlbumsPage() {
   if (!isSupabaseConfigured()) {
-    return (
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-6 text-sm text-amber-200">
-        Supabase 설정이 필요합니다. README.md를 참고해 주세요.
-      </div>
-    );
+    return <SetupNotice />;
   }
 
   let albums: AlbumListItem[];
@@ -79,20 +66,19 @@ export default async function AlbumsPage() {
     albums = await fetchAlbums();
   } catch (e) {
     return (
-      <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-sm text-red-200">
+      <ErrorNotice>
         앨범 목록을 불러오지 못했습니다:{" "}
         {e instanceof Error ? e.message : String(e)}
-      </div>
+      </ErrorNotice>
     );
   }
 
   if (albums.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 py-24 text-center text-neutral-400">
-        <p className="text-4xl">📔</p>
+      <EmptyState emoji="📔">
         <p>아직 만들어진 앨범이 없어요.</p>
         <p className="text-sm">사진 업로드 시 앨범을 만들 수 있습니다.</p>
-      </div>
+      </EmptyState>
     );
   }
 

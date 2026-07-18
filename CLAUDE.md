@@ -55,6 +55,12 @@ app/
   api/photos/[id]/reactions/route.ts 익명 이모지 반응 증감 (키 불필요, 이모지·delta 엄격 검증)
   api/admin/verify/route.ts 관리자/업로드 페이지 진입용 키 검증
   api/admin/storage/route.ts 관리자 키 검증 후 Storage 사용량 조회/고아 파일 정리
+components/                공용 UI 컴포넌트
+  photo-card.tsx           사진 카드 (갤러리·앨범·작가 페이지 공용)
+  avatar.tsx               원형 프로필 아바타 (없으면 📷 대체)
+  notice.tsx               SetupNotice / ErrorNotice / EmptyState
+  scroll-reveal.tsx        스크롤 진입 페이드 인 래퍼
+  ui.ts                    폼 입력 공통 스타일 (inputCls)
 lib/
   supabase.ts              anon/admin 클라이언트, public URL·썸네일 URL 헬퍼
   exif.ts                  브라우저 EXIF 추출 (exifr)

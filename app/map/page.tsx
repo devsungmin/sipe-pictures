@@ -4,6 +4,7 @@ import {
   photoThumbUrl,
 } from "@/lib/supabase";
 import PhotoMap, { type MapPhoto } from "./photo-map";
+import { SetupNotice, ErrorNotice, EmptyState } from "@/components/notice";
 
 export const dynamic = "force-dynamic";
 
@@ -37,11 +38,7 @@ async function fetchPhotosWithLocation(): Promise<MapPhoto[]> {
 
 export default async function MapPage() {
   if (!isSupabaseConfigured()) {
-    return (
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-6 text-sm text-amber-200">
-        Supabase 설정이 필요합니다. README.md를 참고해 주세요.
-      </div>
-    );
+    return <SetupNotice />;
   }
 
   let photos: MapPhoto[];
@@ -49,9 +46,9 @@ export default async function MapPage() {
     photos = await fetchPhotosWithLocation();
   } catch (e) {
     return (
-      <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-sm text-red-200">
+      <ErrorNotice>
         사진을 불러오지 못했습니다: {e instanceof Error ? e.message : String(e)}
-      </div>
+      </ErrorNotice>
     );
   }
 
@@ -65,10 +62,9 @@ export default async function MapPage() {
         </p>
       </div>
       {photos.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-24 text-center text-neutral-400">
-          <p className="text-4xl">🗺️</p>
+        <EmptyState emoji="🗺️">
           <p>위치 정보(GPS)가 담긴 사진이 아직 없어요.</p>
-        </div>
+        </EmptyState>
       ) : (
         <PhotoMap photos={photos} />
       )}

@@ -1,13 +1,9 @@
 import Link from "next/link";
-import {
-  getSupabaseAnon,
-  isSupabaseConfigured,
-  photoPublicUrl,
-  photoThumbUrl,
-} from "@/lib/supabase";
-import { cameraLabel, formatTakenAt } from "@/lib/format";
+import { getSupabaseAnon, isSupabaseConfigured } from "@/lib/supabase";
 import type { PhotoWithPhotographer } from "@/lib/types";
-import ScrollReveal from "./scroll-reveal";
+import ScrollReveal from "@/components/scroll-reveal";
+import PhotoCard from "@/components/photo-card";
+import { SetupNotice, ErrorNotice, EmptyState } from "@/components/notice";
 
 export const dynamic = "force-dynamic";
 
@@ -71,81 +67,9 @@ function groupByDay(photos: PhotoWithPhotographer[]): DayGroup[] {
     .map((group) => ({ ...group, photos: shuffle(group.photos) }));
 }
 
-function PhotoCard({
-  photo,
-  delay,
-}: {
-  photo: PhotoWithPhotographer;
-  delay: number;
-}) {
-  const camera = cameraLabel(photo.camera_make, photo.camera_model);
-  const takenAt = formatTakenAt(photo.taken_at);
-  const photographerName = photo.photographer?.name ?? photo.uploader;
-  return (
-    <ScrollReveal delay={delay}>
-      <Link
-        href={`/photos/${photo.id}`}
-        className="group block overflow-hidden rounded-xl border border-white/10 bg-white/5 transition-all duration-300 hover:-translate-y-1 hover:border-white/25 hover:shadow-xl hover:shadow-black/40"
-      >
-        {/* 가로/세로 사진이 섞여도 정돈되어 보이도록 카드 비율을 4:3으로 고정하고 잘라서 보여준다. 원본 비율은 상세 페이지에서 확인. */}
-        <div className="aspect-[4/3] overflow-hidden">
-          {/* Vercel 이미지 최적화 무료 한도를 아끼기 위해 next/image 대신 img 사용 */}
-          <img
-            src={photoThumbUrl(photo)}
-            alt={photo.title ?? "SIPE 출사 사진"}
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-          />
-        </div>
-        <div className="px-4 py-3 text-sm">
-          <div className="flex items-center justify-between gap-2">
-            <p className="truncate font-medium text-neutral-100">
-              {photo.title ?? "무제"}
-            </p>
-            {photographerName && (
-              <span className="flex shrink-0 items-center gap-1.5 text-xs text-neutral-300">
-                {photo.photographer?.profile_image_path ? (
-                  // 프로필 사진은 원형으로 보여준다.
-                  <img
-                    src={photoPublicUrl(photo.photographer.profile_image_path)}
-                    alt={photographerName}
-                    loading="lazy"
-                    className="h-5 w-5 rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[10px]">
-                    📷
-                  </span>
-                )}
-                {photographerName}
-              </span>
-            )}
-          </div>
-          <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-neutral-400">
-            {camera && <span>{camera}</span>}
-            {takenAt && <span>{takenAt}</span>}
-            {photo.latitude != null && photo.longitude != null && (
-              <span>📍 위치 정보</span>
-            )}
-          </p>
-        </div>
-      </Link>
-    </ScrollReveal>
-  );
-}
-
 export default async function GalleryPage() {
   if (!isSupabaseConfigured()) {
-    return (
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-6 text-sm leading-6 text-amber-200">
-        <p className="font-semibold">Supabase 설정이 필요합니다</p>
-        <p className="mt-2 text-amber-200/80">
-          README.md의 안내에 따라 <code>.env.local</code>에{" "}
-          <code>NEXT_PUBLIC_SUPABASE_URL</code>,{" "}
-          <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>를 설정해 주세요.
-        </p>
-      </div>
-    );
+    return <SetupNotice />;
   }
 
   let photos: PhotoWithPhotographer[];
@@ -153,16 +77,15 @@ export default async function GalleryPage() {
     photos = await fetchPhotos();
   } catch (e) {
     return (
-      <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-sm text-red-200">
+      <ErrorNotice>
         사진을 불러오지 못했습니다: {e instanceof Error ? e.message : String(e)}
-      </div>
+      </ErrorNotice>
     );
   }
 
   if (photos.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-4 py-24 text-center text-neutral-400">
-        <p className="text-4xl">🌄</p>
+      <EmptyState emoji="🌄">
         <p>아직 올라온 사진이 없어요.</p>
         <Link
           href="/upload"
@@ -170,7 +93,7 @@ export default async function GalleryPage() {
         >
           첫 사진 올리기
         </Link>
-      </div>
+      </EmptyState>
     );
   }
 

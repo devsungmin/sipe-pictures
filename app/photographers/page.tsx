@@ -1,11 +1,9 @@
 import Link from "next/link";
-import {
-  getSupabaseAnon,
-  isSupabaseConfigured,
-  photoPublicUrl,
-} from "@/lib/supabase";
+import { getSupabaseAnon, isSupabaseConfigured } from "@/lib/supabase";
 import type { Photographer } from "@/lib/types";
-import ScrollReveal from "@/app/scroll-reveal";
+import ScrollReveal from "@/components/scroll-reveal";
+import Avatar from "@/components/avatar";
+import { SetupNotice, ErrorNotice, EmptyState } from "@/components/notice";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +21,7 @@ async function fetchPhotographers(): Promise<PhotographerWithCount[]> {
 
 export default async function PhotographersPage() {
   if (!isSupabaseConfigured()) {
-    return (
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-6 text-sm text-amber-200">
-        Supabase 설정이 필요합니다. README.md를 참고해 주세요.
-      </div>
-    );
+    return <SetupNotice />;
   }
 
   let photographers: PhotographerWithCount[];
@@ -35,19 +29,18 @@ export default async function PhotographersPage() {
     photographers = await fetchPhotographers();
   } catch (e) {
     return (
-      <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-sm text-red-200">
+      <ErrorNotice>
         작가 목록을 불러오지 못했습니다:{" "}
         {e instanceof Error ? e.message : String(e)}
-      </div>
+      </ErrorNotice>
     );
   }
 
   if (photographers.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 py-24 text-center text-neutral-400">
-        <p className="text-4xl">👤</p>
+      <EmptyState emoji="👤">
         <p>아직 등록된 작가가 없어요.</p>
-      </div>
+      </EmptyState>
     );
   }
 
@@ -68,19 +61,12 @@ export default async function PhotographersPage() {
                 href={`/photographers/${photographer.id}`}
                 className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/25 hover:shadow-xl hover:shadow-black/40"
               >
-                {photographer.profile_image_path ? (
-                  // 프로필 사진은 원형으로 보여준다.
-                  <img
-                    src={photoPublicUrl(photographer.profile_image_path)}
-                    alt={photographer.name}
-                    loading="lazy"
-                    className="h-16 w-16 shrink-0 rounded-full border border-white/15 object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-2xl">
-                    📷
-                  </div>
-                )}
+                <Avatar
+                  imagePath={photographer.profile_image_path}
+                  alt={photographer.name}
+                  className="h-16 w-16 border border-white/15 transition-transform duration-300 group-hover:scale-105"
+                  fallbackClassName="text-2xl"
+                />
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-neutral-100">
                     {photographer.name}

@@ -4,11 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Cropper, { type Area } from "react-easy-crop";
 import AdminGate from "../admin-gate";
-import { getSupabaseAnon, photoPublicUrl, PHOTOS_BUCKET } from "@/lib/supabase";
+import { getSupabaseAnon, PHOTOS_BUCKET } from "@/lib/supabase";
 import type { Photographer } from "@/lib/types";
-
-const inputCls =
-  "w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-neutral-500 focus:border-white/40";
+import { inputCls } from "@/components/ui";
+import Avatar from "@/components/avatar";
 
 /** 선택한 크롭 영역을 512x512 JPEG 파일로 만든다. */
 async function cropToSquareJpeg(file: File, area: Area): Promise<File> {
@@ -94,33 +93,6 @@ function ProfileImageCropper({
       <p className="text-xs text-neutral-500">
         드래그와 확대로 원 안에 보여질 영역을 맞춰 주세요.
       </p>
-    </div>
-  );
-}
-
-function ProfileAvatar({
-  photographer,
-  size,
-}: {
-  photographer: Photographer;
-  size: string;
-}) {
-  if (photographer.profile_image_path) {
-    return (
-      // 프로필 사진은 원형으로 통일해서 보여준다.
-      <img
-        src={photoPublicUrl(photographer.profile_image_path)}
-        alt={photographer.name}
-        loading="lazy"
-        className={`${size} shrink-0 rounded-full border border-white/15 object-cover`}
-      />
-    );
-  }
-  return (
-    <div
-      className={`${size} flex shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-lg`}
-    >
-      📷
     </div>
   );
 }
@@ -334,7 +306,12 @@ function PhotographerManager({ adminKey }: { adminKey: string }) {
                 editingId === p.id ? "border-white/40" : "border-white/10"
               }`}
             >
-              <ProfileAvatar photographer={p} size="h-12 w-12" />
+              <Avatar
+                imagePath={p.profile_image_path}
+                alt={p.name}
+                className="h-12 w-12 border border-white/15"
+                fallbackClassName="text-lg"
+              />
               <div className="min-w-0 flex-1">
                 <Link
                   href={`/photographers/${p.id}`}

@@ -5,11 +5,11 @@ import {
   getSupabaseAnon,
   isSupabaseConfigured,
   photoPublicUrl,
-  photoThumbUrl,
 } from "@/lib/supabase";
-import { cameraLabel, formatTakenAt } from "@/lib/format";
 import type { Photo, Photographer } from "@/lib/types";
-import ScrollReveal from "@/app/scroll-reveal";
+import ScrollReveal from "@/components/scroll-reveal";
+import PhotoCard from "@/components/photo-card";
+import Avatar from "@/components/avatar";
 
 export const dynamic = "force-dynamic";
 
@@ -84,18 +84,12 @@ export default async function PhotographerPage({
       {/* 작가 프로필 */}
       <ScrollReveal>
         <section className="flex flex-col items-center gap-5 rounded-2xl border border-white/10 bg-white/5 p-8 text-center sm:flex-row sm:text-left">
-          {photographer.profile_image_path ? (
-            // 프로필 사진은 원형으로 보여준다.
-            <img
-              src={photoPublicUrl(photographer.profile_image_path)}
-              alt={photographer.name}
-              className="h-28 w-28 shrink-0 rounded-full border-2 border-white/20 object-cover"
-            />
-          ) : (
-            <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-2 border-white/20 bg-white/10 text-4xl">
-              📷
-            </div>
-          )}
+          <Avatar
+            imagePath={photographer.profile_image_path}
+            alt={photographer.name}
+            className="h-28 w-28 border-2 border-white/20"
+            fallbackClassName="text-4xl"
+          />
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold">
               {photographer.name}
@@ -144,37 +138,15 @@ export default async function PhotographerPage({
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {photoList.map((photo, i) => {
-              const camera = cameraLabel(photo.camera_make, photo.camera_model);
-              const takenAt = formatTakenAt(photo.taken_at);
-              return (
-                <ScrollReveal key={photo.id} delay={Math.min(i, 8) * 70}>
-                  <Link
-                    href={`/photos/${photo.id}`}
-                    className="group block overflow-hidden rounded-xl border border-white/10 bg-white/5 transition-all duration-300 hover:-translate-y-1 hover:border-white/25 hover:shadow-xl hover:shadow-black/40"
-                  >
-                    <div className="aspect-[4/3] overflow-hidden">
-                      {/* Vercel 이미지 최적화 무료 한도를 아끼기 위해 next/image 대신 img 사용 */}
-                      <img
-                        src={photoThumbUrl(photo)}
-                        alt={photo.title ?? "SIPE 출사 사진"}
-                        loading="lazy"
-                        className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-                      />
-                    </div>
-                    <div className="px-4 py-3 text-sm">
-                      <p className="font-medium text-neutral-100">
-                        {photo.title ?? "무제"}
-                      </p>
-                      <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-neutral-400">
-                        {camera && <span>{camera}</span>}
-                        {takenAt && <span>{takenAt}</span>}
-                      </p>
-                    </div>
-                  </Link>
-                </ScrollReveal>
-              );
-            })}
+            {photoList.map((photo, i) => (
+              // 작가 본인 페이지이므로 카드의 작가 표시는 생략한다.
+              <PhotoCard
+                key={photo.id}
+                photo={photo}
+                delay={Math.min(i, 8) * 70}
+                showPhotographer={false}
+              />
+            ))}
           </div>
         )}
       </section>
